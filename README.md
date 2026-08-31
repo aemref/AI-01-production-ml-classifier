@@ -23,3 +23,18 @@ tests/     Unit tests
 data/      Dataset files
 docs/      Documentation
 .github/   GitHub Actions and repository configuration
+```
+
+## Local Setup
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m pytest
+python src/train.py --data data/sample.csv
+```
+
+## Status
+
+Week 1: Repository scaffold and baseline classifier.
