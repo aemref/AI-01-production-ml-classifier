@@ -36,9 +36,9 @@ quality claim.
 
 ## Integration result
 
-- [ ] Baseline branch merged into `main`
-- [ ] Repository scaffold merged into `main`
-- [ ] Documentation branch merged into `main`
-- [ ] Clean-clone verification completed
+- [x] Baseline branch merged into `main`
+- [x] Repository scaffold merged into `main`
+- [x] Documentation branch merged into `main`
+- [x] Clean-clone verification completed
 - [ ] CI result linked in the Week 1 issue
 - [ ] Remaining work converted into tracked issues
