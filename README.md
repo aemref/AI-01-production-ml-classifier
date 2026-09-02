@@ -6,10 +6,10 @@ it safely.
 
 ## Problem
 
-The project classifies two-feature records into one of two labels. The first
-iteration is intentionally small: its purpose is to establish a reproducible
-baseline for data validation, model training, testing, and CI before adding
-more realistic data or deployment concerns.
+The project classifies breast mass measurements as malignant or benign using a
+small, reproducible subset of the real Breast Cancer Wisconsin (Diagnostic)
+dataset. It exists to establish a baseline for data validation, model training,
+testing, and CI; it is a learning project, not a medical diagnostic tool.
 
 ## Approach
 
@@ -17,8 +17,11 @@ The baseline uses Logistic Regression from scikit-learn. The pipeline reads a
 CSV file, validates its required columns and values, splits the data with a
 fixed random seed, trains the model, and reports Accuracy and F1.
 
-The sample dataset is synthetic and is included only as a deterministic fixture
-for local development and CI.
+The default dataset contains the mean radius and mean texture features. Its
+provenance, transformations, appropriate use, and risks are recorded in the
+[data card](docs/data-card.md); its dataset license is in
+[`data/LICENSE.md`](data/LICENSE.md). The synthetic sample remains only as a
+small deterministic test fixture.
 
 ## Setup
 
@@ -35,27 +38,28 @@ python -m pip install -r requirements.txt
 Run the complete baseline with one command:
 
 ```bash
-python src/train.py --data data/sample.csv
+python src/train.py
 ```
 
 Expected output for the included fixture:
 
 ```text
-Accuracy: 1.000
-F1: 1.000
+Accuracy: 0.888
+F1: 0.912
 ```
 
-Example input (`data/sample.csv`):
+Input schema:
 
 ```csv
 feature_a,feature_b,label
-1.0,1.1,0
-4.0,4.1,1
+17.99,10.38,0
+13.54,14.36,1
 ```
 
-The real fixture contains enough rows for a stratified train/test split. Empty
-files, missing columns, missing values, and single-class data produce clear
-validation errors.
+Here `feature_a` is mean radius, `feature_b` is mean texture, and labels `0` and
+`1` mean malignant and benign respectively. Empty files, missing columns,
+missing or non-finite values, non-numeric features, invalid labels, and data too
+small for a stratified split produce clear validation errors.
 
 ## Test
 
@@ -93,15 +97,18 @@ docs/                        Measurements and engineering notes
 
 | Metric | Current fixture result | Interpretation |
 | --- | ---: | --- |
-| Accuracy | 1.000 | Correct predictions / test examples |
-| F1 | 1.000 | Harmonic mean of precision and recall |
+| Accuracy | 0.888 | Correct predictions / test examples |
+| F1 | 0.912 | Harmonic mean of precision and recall for label `1` (benign) |
 
-These values are not a production performance claim. The fixture is tiny,
-synthetic, and deliberately easy to separate.
+These deterministic values use only two of the source dataset's 30 features and
+one train/test split. They are not a production or clinical performance claim.
 
 ## Limitations and Risks
 
-- The sample dataset does not represent real-world distribution or drift.
+- This historical dataset does not establish present-day clinical validity or
+  represent deployment populations and drift.
+- The baseline uses only mean radius and mean texture, discarding 28 source
+  features for a deliberately small first integration.
 - A single train/test split is insufficient for model selection.
 - No model artifact, serving API, monitoring, or data versioning exists yet.
 - Accuracy and F1 can hide class-specific failures; future work should include
@@ -118,4 +125,5 @@ synthetic, and deliberately easy to separate.
 
 ## Status
 
-Week 1: Repository scaffold, baseline classifier, tests, CI, and documentation.
+Week 2: Real classification data, dataset licensing, data card, stronger input
+validation, tests, and CI integration.
