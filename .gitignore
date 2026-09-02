@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 data/*.csv
 !data/sample.csv
+!data/breast_cancer_wisconsin_diagnostic.csv

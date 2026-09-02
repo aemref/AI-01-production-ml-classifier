@@ -1,8 +1,9 @@
-"""Train and evaluate the Week 1 baseline classifier."""
+"""Train and evaluate the baseline classifier."""
 
 from __future__ import annotations
 
 import argparse
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -12,6 +13,9 @@ from sklearn.model_selection import train_test_split
 
 
 REQUIRED_COLUMNS = {"feature_a", "feature_b", "label"}
+FEATURE_COLUMNS = ["feature_a", "feature_b"]
+EXPECTED_LABELS = {0, 1}
+TEST_SIZE = 0.25
 
 
 def train_and_evaluate(data_path: str | Path) -> dict[str, float]:
@@ -29,13 +33,32 @@ def train_and_evaluate(data_path: str | Path) -> dict[str, float]:
         raise ValueError("Dataset must contain at least one row")
     if data[list(REQUIRED_COLUMNS)].isnull().any().any():
         raise ValueError("Dataset must not contain empty values")
-    if data["label"].nunique() < 2:
-        raise ValueError("Dataset must contain at least two label classes")
 
-    features = data[["feature_a", "feature_b"]]
+    features = data[FEATURE_COLUMNS]
+    has_non_numeric_feature = any(
+        not pd.api.types.is_numeric_dtype(features[column]) for column in features
+    )
+    if has_non_numeric_feature:
+        raise ValueError("Feature columns must contain only numeric values")
+    if features.isin([float("inf"), float("-inf")]).any().any():
+        raise ValueError("Feature columns must contain only finite values")
+
+    labels = set(data["label"].unique())
+    if labels != EXPECTED_LABELS:
+        raise ValueError("Label column must contain both binary classes 0 and 1")
+
+    class_counts = data["label"].value_counts()
+    test_rows = math.ceil(len(data) * TEST_SIZE)
+    train_rows = len(data) - test_rows
+    if class_counts.min() < 2 or min(test_rows, train_rows) < len(EXPECTED_LABELS):
+        raise ValueError(
+            "Dataset is too small for a stratified split; provide at least two "
+            "rows per class and enough rows for both split partitions"
+        )
+
     labels = data["label"]
     x_train, x_test, y_train, y_test = train_test_split(
-        features, labels, test_size=0.25, random_state=42, stratify=labels
+        features, labels, test_size=TEST_SIZE, random_state=42, stratify=labels
     )
     model = LogisticRegression(random_state=42)
     model.fit(x_train, y_train)
@@ -50,7 +73,9 @@ def train_and_evaluate(data_path: str | Path) -> dict[str, float]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train the baseline classifier")
     parser.add_argument(
-        "--data", default="data/sample.csv", help="Path to the CSV dataset"
+        "--data",
+        default="data/breast_cancer_wisconsin_diagnostic.csv",
+        help="Path to the CSV dataset",
     )
     args = parser.parse_args()
 
