@@ -45,7 +45,8 @@ No rows were sampled, synthesized, or relabeled.
 - Features used: 2 numeric columns from the 30 source features.
 - Class balance: 212 malignant (`0`), 357 benign (`1`).
 - Missing values in the included columns: 0.
-- Duplicate and outlier analysis: not yet performed; tracked as future EDA.
+- Duplicate feature rows: 0. Outlier analysis is not yet performed and remains
+  future EDA.
 - File SHA-256:
   `98b12889accbae788456d9442fa0753d2d15a361241b543f9fe21795176d1303`.
 
@@ -59,6 +60,11 @@ The baseline uses a fixed 75/25 stratified split and Logistic Regression. With
 random seed 42, the included subset produces Accuracy `0.888` and benign-class
 F1 `0.912`. These results are regression signals, not estimates of clinical
 utility.
+
+The reproducible risk audit reports a majority/minority ratio of `1.684`, no
+target-copy feature, feature/target correlations of `-0.730` for mean radius and
+`-0.415` for mean texture, and no duplicate feature rows. These checks reduce
+obvious leakage concerns but cannot prove leakage is absent.
 
 Important limitations include the historical collection context, unknown
 fitness for current or broader populations, reduced feature set, class
