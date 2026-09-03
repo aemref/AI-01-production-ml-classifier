@@ -69,6 +69,21 @@ python -m pytest -q
 
 CI runs the same tests and baseline command on every push and pull request.
 
+## Data Quality Audit
+
+Run the reproducible missingness, class-imbalance, and leakage-risk checks:
+
+```bash
+python src/data_quality.py
+```
+
+The current dataset has no missing values or duplicate feature rows. Its class
+ratio is `1.684` (357 benign to 212 malignant), classified by the audit's
+temporary heuristic as moderate imbalance. Neither feature copies the target,
+and neither crosses the audit's temporary absolute-correlation threshold of
+`0.95`. See the [risk analysis](docs/week-02-data-quality-risks.md) for findings,
+limitations, and follow-up work.
+
 ## Architecture
 
 ```mermaid
