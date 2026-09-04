@@ -6,6 +6,7 @@ from src.train import train_and_evaluate
 
 
 DATA_PATH = Path(__file__).parents[1] / "data" / "sample.csv"
+FIXTURE_PATH = Path(__file__).parent / "fixtures"
 REAL_DATA_PATH = (
     Path(__file__).parents[1] / "data" / "breast_cancer_wisconsin_diagnostic.csv"
 )
@@ -24,6 +25,24 @@ def test_real_dataset_supports_the_main_training_flow():
 
     assert metrics["accuracy"] >= 0.85
     assert metrics["f1"] >= 0.85
+    assert metrics["malignant_recall"] >= 0.90
+
+
+def test_normal_scenario_fixture_completes_training():
+    metrics = train_and_evaluate(FIXTURE_PATH / "normal.csv")
+
+    assert all(0.0 <= value <= 1.0 for value in metrics.values())
+
+
+def test_minimum_viable_split_boundary_fixture_completes_training():
+    metrics = train_and_evaluate(FIXTURE_PATH / "boundary_minimum_split.csv")
+
+    assert all(0.0 <= value <= 1.0 for value in metrics.values())
+
+
+def test_missing_value_failure_fixture_has_clear_error():
+    with pytest.raises(ValueError, match="empty values"):
+        train_and_evaluate(FIXTURE_PATH / "failure_missing_value.csv")
 
 
 def test_empty_dataset_has_clear_error(tmp_path):

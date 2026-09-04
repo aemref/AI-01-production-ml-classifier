@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import accuracy_score, f1_score, recall_score
 from sklearn.model_selection import train_test_split
 
 
@@ -60,13 +60,16 @@ def train_and_evaluate(data_path: str | Path) -> dict[str, float]:
     x_train, x_test, y_train, y_test = train_test_split(
         features, labels, test_size=TEST_SIZE, random_state=42, stratify=labels
     )
-    model = LogisticRegression(random_state=42)
+    model = LogisticRegression(random_state=42, class_weight="balanced")
     model.fit(x_train, y_train)
     predictions = model.predict(x_test)
 
     return {
         "accuracy": float(accuracy_score(y_test, predictions)),
         "f1": float(f1_score(y_test, predictions, zero_division=0)),
+        "malignant_recall": float(
+            recall_score(y_test, predictions, pos_label=0, zero_division=0)
+        ),
     }
 
 
@@ -86,6 +89,7 @@ def main() -> None:
 
     print(f"Accuracy: {metrics['accuracy']:.3f}")
     print(f"F1: {metrics['f1']:.3f}")
+    print(f"Malignant recall: {metrics['malignant_recall']:.3f}")
 
 
 if __name__ == "__main__":

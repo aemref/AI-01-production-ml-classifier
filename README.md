@@ -15,7 +15,8 @@ testing, and CI; it is a learning project, not a medical diagnostic tool.
 
 The baseline uses Logistic Regression from scikit-learn. The pipeline reads a
 CSV file, validates its required columns and values, splits the data with a
-fixed random seed, trains the model, and reports Accuracy and F1.
+fixed random seed, trains a class-balanced model, and reports Accuracy, benign
+F1, and malignant recall.
 
 The default dataset contains the mean radius and mean texture features. Its
 provenance, transformations, appropriate use, and risks are recorded in the
@@ -45,7 +46,8 @@ Expected output for the included fixture:
 
 ```text
 Accuracy: 0.888
-F1: 0.912
+F1: 0.908
+Malignant recall: 0.906
 ```
 
 Input schema:
@@ -67,7 +69,8 @@ small for a stratified split produce clear validation errors.
 python -m pytest -q
 ```
 
-CI runs the same tests and baseline command on every push and pull request.
+CI runs the same tests, baseline command, and data-quality audit on every push
+and pull request.
 
 ## Data Quality Audit
 
@@ -84,6 +87,10 @@ and neither crosses the audit's temporary absolute-correlation threshold of
 `0.95`. See the [risk analysis](docs/week-02-data-quality-risks.md) for findings,
 limitations, and follow-up work.
 
+The English [EDA notebook](notebooks/week-02-eda.ipynb) and its concise
+[evaluation report](docs/week-02-eda-report.md) compare the original and
+class-balanced baselines, including their error trade-off.
+
 ## Architecture
 
 ```mermaid
@@ -92,7 +99,7 @@ flowchart LR
     B --> C[Train/test split]
     C --> D[Logistic Regression]
     D --> E[Predictions]
-    E --> F[Accuracy and F1]
+    E --> F[Accuracy, F1, and malignant recall]
     G[pytest] --> H[GitHub Actions CI]
     B -. invalid input .-> I[Clear error]
 ```
@@ -104,6 +111,7 @@ src/                         Source and model code
 tests/                       Unit and regression tests
 data/                        Small, safe development fixtures
 docs/                        Measurements and engineering notes
+notebooks/                   Reproducible English EDA notebooks
 .github/workflows/           Continuous integration
 .github/ISSUE_TEMPLATE/      Standard issue intake
 ```
@@ -113,7 +121,8 @@ docs/                        Measurements and engineering notes
 | Metric | Current fixture result | Interpretation |
 | --- | ---: | --- |
 | Accuracy | 0.888 | Correct predictions / test examples |
-| F1 | 0.912 | Harmonic mean of precision and recall for label `1` (benign) |
+| F1 | 0.908 | Harmonic mean of precision and recall for label `1` (benign) |
+| Malignant recall | 0.906 | Share of malignant test rows correctly detected |
 
 These deterministic values use only two of the source dataset's 30 features and
 one train/test split. They are not a production or clinical performance claim.
@@ -126,13 +135,14 @@ one train/test split. They are not a production or clinical performance claim.
   features for a deliberately small first integration.
 - A single train/test split is insufficient for model selection.
 - No model artifact, serving API, monitoring, or data versioning exists yet.
-- Accuracy and F1 can hide class-specific failures; future work should include
-  a confusion matrix and per-class metrics.
+- A single malignant-recall metric still cannot replace a confusion matrix,
+  uncertainty analysis, subgroup evaluation, or clinical validation.
 
 ## Security and Cost Notes
 
 - Do not commit secrets, credentials, personal data, or `.env` files.
-- Only synthetic fixture data belongs in this repository.
+- Only reviewed, licensed, non-identifying data and synthetic fixtures belong
+  in this repository.
 - The baseline runs locally and uses no external API, cloud service, or paid
   compute; current runtime cost is effectively zero apart from local resources.
 - Future production work must add access control, data retention rules, and a
