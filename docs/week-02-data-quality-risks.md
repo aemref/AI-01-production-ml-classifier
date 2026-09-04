@@ -83,6 +83,9 @@ production use.
 
 ## Validation result
 
-The final full-suite run completed with `12 passed`; the audit output matched the
-record above, and the baseline remained Accuracy `0.888` / F1 `0.912`. CI runs
-both the training baseline and this audit on every push and pull request.
+The original full-suite run completed with `12 passed`; the audit output matched
+the record above, and the then-current baseline remained Accuracy `0.888` / F1
+`0.912`. A later Week 2 evaluation pass introduced class balancing and
+malignant-recall reporting; see `docs/week-02-eda-report.md` for that explicitly
+versioned result. CI runs both the training baseline and this audit on every push
+and pull request.
