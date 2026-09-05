@@ -45,8 +45,11 @@ No rows were sampled, synthesized, or relabeled.
 - Features used: 2 numeric columns from the 30 source features.
 - Class balance: 212 malignant (`0`), 357 benign (`1`).
 - Missing values in the included columns: 0.
-- Duplicate feature rows: 0. Outlier analysis is not yet performed and remains
-  future EDA.
+- Duplicate feature rows: 0.
+- Tukey's 1.5xIQR rule flags 14 mean-radius rows and 7 mean-texture rows as
+  potential outliers. They remain in the dataset because their values are
+  plausible and removing them could discard useful class signal. See the
+  [Week 2 EDA report](week-02-eda-report.md) for the recorded decision.
 - File SHA-256:
   `98b12889accbae788456d9442fa0753d2d15a361241b543f9fe21795176d1303`.
 

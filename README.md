@@ -24,15 +24,22 @@ provenance, transformations, appropriate use, and risks are recorded in the
 [`data/LICENSE.md`](data/LICENSE.md). The synthetic sample remains only as a
 small deterministic test fixture.
 
-## Setup
+## Quickstart from a Fresh Clone
 
 Requirements: Python 3.11+.
 
 ```bash
+git clone https://github.com/aemref/AI-01-production-ml-classifier.git
+cd AI-01-production-ml-classifier
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
+python src/train.py
 ```
+
+The last command trains and evaluates the baseline against the repository's
+licensed real-data subset. No API key, external service, or data download is
+required.
 
 ## Run
 
@@ -42,7 +49,7 @@ Run the complete baseline with one command:
 python src/train.py
 ```
 
-Expected output for the included fixture:
+Expected output for the default real-data subset:
 
 ```text
 Accuracy: 0.888
@@ -89,7 +96,9 @@ limitations, and follow-up work.
 
 The English [EDA notebook](notebooks/week-02-eda.ipynb) and its concise
 [evaluation report](docs/week-02-eda-report.md) compare the original and
-class-balanced baselines, including their error trade-off.
+class-balanced baselines, including their error trade-off. The notebook is
+committed with its outputs so the reported row counts, distributions, quality
+signals, and model comparison can be inspected without rerunning it.
 
 ## Architecture
 
