@@ -7,7 +7,7 @@ the resulting pull request to its issue.
 | --- | --- | --- |
 | 1 | Baseline assessment and repository setup | Reproducible baseline, scaffold, CI |
 | 2 | Data contract and dataset validation | Schema, type, range, and quality checks |
-| 3 | Reproducible training configuration | Configurable seed, split, and parameters |
+| 3 | [Reproducible training configuration](week-03-issue-plan.md) | Configurable seed, split, and parameters |
 | 4 | Baseline model comparison | Compare at least two classifiers |
 | 5 | Evaluation report and error analysis | Confusion matrix and per-class analysis |
 | 6 | Feature engineering experiment | Document one measurable feature change |
