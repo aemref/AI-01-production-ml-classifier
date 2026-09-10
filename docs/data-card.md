@@ -59,9 +59,11 @@ set, and inputs too small for the stratified split.
 
 ## Evaluation and limitations
 
-The baseline uses a fixed 75/25 stratified split and class-balanced Logistic
-Regression. With random seed 42, the included subset produces Accuracy `0.888`,
-benign-class F1 `0.908`, and malignant recall `0.906`. These results are
+The baseline uses a fixed stratified 70/15/15 train/validation/test split and
+class-balanced Logistic Regression fitted only on the training partition. With
+random seed 42, validation produces Accuracy `0.918`, benign-class F1 `0.933`,
+and malignant recall `0.906`; the untouched test partition produces Accuracy
+`0.860`, benign-class F1 `0.882`, and malignant recall `0.906`. These results are
 regression signals, not estimates of clinical utility.
 
 The reproducible risk audit reports a majority/minority ratio of `1.684`, no

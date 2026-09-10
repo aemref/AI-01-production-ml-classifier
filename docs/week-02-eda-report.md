@@ -1,5 +1,9 @@
 # Week 2 EDA and Evaluation Report
 
+> Historical note: this report records the Week 2 train/test baseline. The
+> current Week 3 pipeline uses separate train/validation/test partitions; see
+> `docs/week-03-split-pipeline.md` for current metrics and leakage guarantees.
+
 ## Goal
 
 Publish the Week 2 EDA findings in English and fix the most consequential

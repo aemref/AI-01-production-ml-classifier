@@ -1,8 +1,10 @@
 from pathlib import Path
 
+import pandas as pd
 import pytest
+from sklearn.linear_model import LogisticRegression
 
-from src.train import train_and_evaluate
+from src.train import split_dataset, train_and_evaluate
 
 
 DATA_PATH = Path(__file__).parents[1] / "data" / "sample.csv"
@@ -10,6 +12,40 @@ FIXTURE_PATH = Path(__file__).parent / "fixtures"
 REAL_DATA_PATH = (
     Path(__file__).parents[1] / "data" / "breast_cancer_wisconsin_diagnostic.csv"
 )
+
+
+def test_train_validation_test_splits_are_disjoint_and_complete():
+    data = pd.read_csv(REAL_DATA_PATH)
+
+    splits = split_dataset(data)
+
+    train_ids = set(splits.train.index)
+    validation_ids = set(splits.validation.index)
+    test_ids = set(splits.test.index)
+    assert train_ids.isdisjoint(validation_ids)
+    assert train_ids.isdisjoint(test_ids)
+    assert validation_ids.isdisjoint(test_ids)
+    assert train_ids | validation_ids | test_ids == set(data.index)
+    split_lengths = (len(splits.train), len(splits.validation), len(splits.test))
+    assert split_lengths == (398, 85, 86)
+    assert all(set(partition["label"]) == {0, 1} for partition in splits)
+
+
+def test_model_fit_receives_train_partition_only(monkeypatch):
+    data = pd.read_csv(REAL_DATA_PATH)
+    expected_train_ids = set(split_dataset(data).train.index)
+    fitted_ids = set()
+    original_fit = LogisticRegression.fit
+
+    def record_fit(model, features, labels, *args, **kwargs):
+        fitted_ids.update(features.index)
+        return original_fit(model, features, labels, *args, **kwargs)
+
+    monkeypatch.setattr(LogisticRegression, "fit", record_fit)
+
+    train_and_evaluate(REAL_DATA_PATH)
+
+    assert fitted_ids == expected_train_ids
 
 
 def test_baseline_returns_valid_metrics():
@@ -23,6 +59,9 @@ def test_baseline_returns_valid_metrics():
 def test_real_dataset_supports_the_main_training_flow():
     metrics = train_and_evaluate(REAL_DATA_PATH)
 
+    assert metrics["validation_accuracy"] >= 0.85
+    assert metrics["validation_f1"] >= 0.85
+    assert metrics["validation_malignant_recall"] >= 0.90
     assert metrics["accuracy"] >= 0.85
     assert metrics["f1"] >= 0.85
     assert metrics["malignant_recall"] >= 0.90
@@ -91,3 +130,14 @@ def test_too_few_rows_for_stratified_split_has_clear_error(tmp_path):
 
     with pytest.raises(ValueError, match="too small"):
         train_and_evaluate(boundary_file)
+
+
+@pytest.mark.parametrize(
+    ("validation_size", "test_size"),
+    [(0.0, 0.15), (0.15, 0.0), (0.50, 0.50), (-0.1, 0.15)],
+)
+def test_invalid_split_fractions_have_clear_error(validation_size, test_size):
+    data = pd.read_csv(REAL_DATA_PATH)
+
+    with pytest.raises(ValueError, match="greater than 0 and sum to less than 1"):
+        split_dataset(data, validation_size=validation_size, test_size=test_size)
