@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import math
 from pathlib import Path
+from typing import NamedTuple
 
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
@@ -15,11 +15,71 @@ from sklearn.model_selection import train_test_split
 REQUIRED_COLUMNS = {"feature_a", "feature_b", "label"}
 FEATURE_COLUMNS = ["feature_a", "feature_b"]
 EXPECTED_LABELS = {0, 1}
-TEST_SIZE = 0.25
+VALIDATION_SIZE = 0.15
+TEST_SIZE = 0.15
+
+
+class DatasetSplits(NamedTuple):
+    """Index-preserving train, validation, and test partitions."""
+
+    train: pd.DataFrame
+    validation: pd.DataFrame
+    test: pd.DataFrame
+
+
+def split_dataset(
+    data: pd.DataFrame,
+    *,
+    validation_size: float = VALIDATION_SIZE,
+    test_size: float = TEST_SIZE,
+    random_state: int = 42,
+) -> DatasetSplits:
+    """Create stratified, pairwise-disjoint train/validation/test partitions."""
+    holdout_size = validation_size + test_size
+    if validation_size <= 0 or test_size <= 0 or holdout_size >= 1:
+        raise ValueError(
+            "Validation and test sizes must be greater than 0 and sum to less than 1"
+        )
+
+    try:
+        train, holdout = train_test_split(
+            data,
+            test_size=holdout_size,
+            random_state=random_state,
+            stratify=data["label"],
+        )
+        relative_test_size = test_size / holdout_size
+        validation, test = train_test_split(
+            holdout,
+            test_size=relative_test_size,
+            random_state=random_state,
+            stratify=holdout["label"],
+        )
+    except ValueError as error:
+        raise ValueError(
+            "Dataset is too small for a stratified train/validation/test split; "
+            "provide enough rows from both classes for all three partitions"
+        ) from error
+
+    return DatasetSplits(train=train, validation=validation, test=test)
+
+
+def _evaluate_partition(
+    model: LogisticRegression, partition: pd.DataFrame
+) -> dict[str, float]:
+    labels = partition["label"]
+    predictions = model.predict(partition[FEATURE_COLUMNS])
+    return {
+        "accuracy": float(accuracy_score(labels, predictions)),
+        "f1": float(f1_score(labels, predictions, zero_division=0)),
+        "malignant_recall": float(
+            recall_score(labels, predictions, pos_label=0, zero_division=0)
+        ),
+    }
 
 
 def train_and_evaluate(data_path: str | Path) -> dict[str, float]:
-    """Train the baseline model and return accuracy and F1 metrics."""
+    """Fit on train only and return separate validation and test metrics."""
     path = Path(data_path)
     if not path.is_file():
         raise FileNotFoundError(f"Dataset not found: {path}")
@@ -47,29 +107,20 @@ def train_and_evaluate(data_path: str | Path) -> dict[str, float]:
     if labels != EXPECTED_LABELS:
         raise ValueError("Label column must contain both binary classes 0 and 1")
 
-    class_counts = data["label"].value_counts()
-    test_rows = math.ceil(len(data) * TEST_SIZE)
-    train_rows = len(data) - test_rows
-    if class_counts.min() < 2 or min(test_rows, train_rows) < len(EXPECTED_LABELS):
-        raise ValueError(
-            "Dataset is too small for a stratified split; provide at least two "
-            "rows per class and enough rows for both split partitions"
-        )
-
-    labels = data["label"]
-    x_train, x_test, y_train, y_test = train_test_split(
-        features, labels, test_size=TEST_SIZE, random_state=42, stratify=labels
-    )
+    splits = split_dataset(data)
     model = LogisticRegression(random_state=42, class_weight="balanced")
-    model.fit(x_train, y_train)
-    predictions = model.predict(x_test)
+    model.fit(splits.train[FEATURE_COLUMNS], splits.train["label"])
+
+    # TODO: Use validation metrics for explicit candidate selection when Week 4
+    # introduces more than one model. The test partition must remain untouched.
+    validation_metrics = _evaluate_partition(model, splits.validation)
+    test_metrics = _evaluate_partition(model, splits.test)
 
     return {
-        "accuracy": float(accuracy_score(y_test, predictions)),
-        "f1": float(f1_score(y_test, predictions, zero_division=0)),
-        "malignant_recall": float(
-            recall_score(y_test, predictions, pos_label=0, zero_division=0)
-        ),
+        "validation_accuracy": validation_metrics["accuracy"],
+        "validation_f1": validation_metrics["f1"],
+        "validation_malignant_recall": validation_metrics["malignant_recall"],
+        **test_metrics,
     }
 
 
@@ -87,9 +138,15 @@ def main() -> None:
     except (FileNotFoundError, ValueError) as error:
         parser.error(str(error))
 
-    print(f"Accuracy: {metrics['accuracy']:.3f}")
-    print(f"F1: {metrics['f1']:.3f}")
-    print(f"Malignant recall: {metrics['malignant_recall']:.3f}")
+    print(f"Validation accuracy: {metrics['validation_accuracy']:.3f}")
+    print(f"Validation F1: {metrics['validation_f1']:.3f}")
+    print(
+        "Validation malignant recall: "
+        f"{metrics['validation_malignant_recall']:.3f}"
+    )
+    print(f"Test accuracy: {metrics['accuracy']:.3f}")
+    print(f"Test F1: {metrics['f1']:.3f}")
+    print(f"Test malignant recall: {metrics['malignant_recall']:.3f}")
 
 
 if __name__ == "__main__":

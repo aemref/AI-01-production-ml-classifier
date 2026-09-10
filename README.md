@@ -14,9 +14,9 @@ testing, and CI; it is a learning project, not a medical diagnostic tool.
 ## Approach
 
 The baseline uses Logistic Regression from scikit-learn. The pipeline reads a
-CSV file, validates its required columns and values, splits the data with a
-fixed random seed, trains a class-balanced model, and reports Accuracy, benign
-F1, and malignant recall.
+CSV file, validates its required columns and values, creates stratified
+train/validation/test partitions with a fixed random seed, fits a class-balanced
+model on train only, and reports separate validation and test metrics.
 
 The default dataset contains the mean radius and mean texture features. Its
 provenance, transformations, appropriate use, and risks are recorded in the
@@ -52,9 +52,12 @@ python src/train.py
 Expected output for the default real-data subset:
 
 ```text
-Accuracy: 0.888
-F1: 0.908
-Malignant recall: 0.906
+Validation accuracy: 0.918
+Validation F1: 0.933
+Validation malignant recall: 0.906
+Test accuracy: 0.860
+Test F1: 0.882
+Test malignant recall: 0.906
 ```
 
 Input schema:
@@ -105,12 +108,16 @@ signals, and model comparison can be inspected without rerunning it.
 ```mermaid
 flowchart LR
     A[CSV input] --> B[Schema and value validation]
-    B --> C[Train/test split]
-    C --> D[Logistic Regression]
-    D --> E[Predictions]
-    E --> F[Accuracy, F1, and malignant recall]
-    G[pytest] --> H[GitHub Actions CI]
-    B -. invalid input .-> I[Clear error]
+    B --> C[Stratified 70/15/15 split]
+    C --> D[Train-only model fit]
+    C --> E[Validation evaluation]
+    C --> F[Untouched test evaluation]
+    D --> E
+    D --> F
+    E --> G[Validation metrics]
+    F --> H[Test metrics]
+    I[pytest] --> J[GitHub Actions CI]
+    B -. invalid input .-> K[Clear error]
 ```
 
 ## Repository Structure
@@ -127,14 +134,14 @@ notebooks/                   Reproducible English EDA notebooks
 
 ## Metrics and Baseline
 
-| Metric | Current fixture result | Interpretation |
-| --- | ---: | --- |
-| Accuracy | 0.888 | Correct predictions / test examples |
-| F1 | 0.908 | Harmonic mean of precision and recall for label `1` (benign) |
-| Malignant recall | 0.906 | Share of malignant test rows correctly detected |
+| Metric | Validation | Test |
+| --- | ---: | ---: |
+| Accuracy | 0.918 | 0.860 |
+| Benign F1 | 0.933 | 0.882 |
+| Malignant recall | 0.906 | 0.906 |
 
 These deterministic values use only two of the source dataset's 30 features and
-one train/test split. They are not a production or clinical performance claim.
+one 70/15/15 split. They are not a production or clinical performance claim.
 
 ## Limitations and Risks
 
