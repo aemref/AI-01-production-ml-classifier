@@ -55,7 +55,8 @@ No rows were sampled, synthesized, or relabeled.
 
 The training path rejects missing columns, empty data, missing or non-finite
 feature values, non-numeric features, labels other than the complete `{0, 1}`
-set, and inputs too small for the stratified split.
+set, inputs too small for the stratified split, direct or inverse target-copy
+features, and duplicate feature rows that could cross split boundaries.
 
 ## Evaluation and limitations
 

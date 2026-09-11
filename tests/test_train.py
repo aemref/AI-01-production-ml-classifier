@@ -84,6 +84,26 @@ def test_missing_value_failure_fixture_has_clear_error():
         train_and_evaluate(FIXTURE_PATH / "failure_missing_value.csv")
 
 
+def test_target_copy_failure_fixture_has_clear_leakage_error():
+    with pytest.raises(ValueError, match="target leakage.*feature_a"):
+        train_and_evaluate(FIXTURE_PATH / "failure_target_copy.csv")
+
+
+def test_inverted_target_copy_has_clear_leakage_error(tmp_path):
+    data = pd.read_csv(FIXTURE_PATH / "failure_target_copy.csv")
+    data["feature_a"] = 1 - data["label"]
+    inverted_copy_file = tmp_path / "inverted_target_copy.csv"
+    data.to_csv(inverted_copy_file, index=False)
+
+    with pytest.raises(ValueError, match="target leakage.*feature_a"):
+        train_and_evaluate(inverted_copy_file)
+
+
+def test_duplicate_feature_failure_fixture_has_clear_leakage_error():
+    with pytest.raises(ValueError, match="split leakage.*duplicate feature rows"):
+        train_and_evaluate(FIXTURE_PATH / "failure_duplicate_features.csv")
+
+
 def test_empty_dataset_has_clear_error(tmp_path):
     empty_file = tmp_path / "empty.csv"
     empty_file.write_text("feature_a,feature_b,label\n")
