@@ -27,6 +27,29 @@ class DatasetSplits(NamedTuple):
     test: pd.DataFrame
 
 
+def validate_no_obvious_leakage(data: pd.DataFrame) -> None:
+    """Reject content patterns that can leak labels across split boundaries."""
+    labels = data["label"]
+    target_copy_columns = [
+        column
+        for column in FEATURE_COLUMNS
+        if data[column].eq(labels).all() or data[column].eq(1 - labels).all()
+    ]
+    if target_copy_columns:
+        columns = ", ".join(target_copy_columns)
+        raise ValueError(
+            f"Potential target leakage: feature columns copy the label: {columns}"
+        )
+
+    if data.duplicated(subset=FEATURE_COLUMNS, keep=False).any():
+        raise ValueError(
+            "Potential split leakage: dataset contains duplicate feature rows"
+        )
+
+    # TODO: Replace duplicate-row rejection with group-aware splitting when the
+    # data contract gains a stable patient or observation-group identifier.
+
+
 def split_dataset(
     data: pd.DataFrame,
     *,
@@ -107,6 +130,7 @@ def train_and_evaluate(data_path: str | Path) -> dict[str, float]:
     if labels != EXPECTED_LABELS:
         raise ValueError("Label column must contain both binary classes 0 and 1")
 
+    validate_no_obvious_leakage(data)
     splits = split_dataset(data)
     model = LogisticRegression(random_state=42, class_weight="balanced")
     model.fit(splits.train[FEATURE_COLUMNS], splits.train["label"])

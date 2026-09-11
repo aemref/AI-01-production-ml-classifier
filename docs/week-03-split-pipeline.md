@@ -30,6 +30,28 @@ The new tests require pairwise-disjoint partition indices, complete coverage of
 the source rows, both labels in every partition, and proof that
 `LogisticRegression.fit` receives train indices only.
 
+### Content-leakage guard increment
+
+Goal: improve the train/validation/test pipeline by blocking content-level
+leakage before splitting.
+
+Index-disjointness does not detect two records with different row indices but
+identical feature content, nor does it detect a feature that encodes the target.
+Two failure fixtures were therefore added before the guard implementation. The
+focused run failed as expected:
+
+```text
+FAILED test_target_copy_failure_fixture_has_clear_leakage_error - Failed: DID NOT RAISE
+FAILED test_duplicate_feature_failure_fixture_has_clear_leakage_error - Failed: DID NOT RAISE
+2 failed, 16 passed
+```
+
+The training entry point now rejects direct and inverse binary target copies and
+duplicate feature rows before any partition or model fit is created. The latter
+is deliberately conservative. A visible source `TODO` requires replacement
+with group-aware splitting after the data contract gains a stable patient or
+observation-group identifier.
+
 ## Design and leakage controls
 
 - The first stratified split reserves 30% as holdout data.
@@ -40,6 +62,8 @@ the source rows, both labels in every partition, and proof that
 - Test is reported independently on 86 rows and is not used for fitting.
 - No learned preprocessing currently exists. Any future transformer must be fit
   on train only and protected by an equivalent regression test.
+- Content checks reject direct/inverse target copies and duplicate feature rows
+  before splitting, covering leakage that index-overlap assertions cannot see.
 
 ## Empty, invalid, and boundary behavior
 
@@ -60,6 +84,11 @@ the source rows, both labels in every partition, and proof that
 .venv/bin/python src/data_quality.py
 .venv/bin/python -m compileall -q src tests
 ```
+
+Final verification result: `24 passed in 0.79s`; training, data-quality audit,
+and byte-compilation commands all exited with status `0`. The audit again
+reported 569 rows, 0 missing values, 0 duplicate feature rows, and no target-copy
+features.
 
 Observed training output:
 

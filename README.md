@@ -71,7 +71,9 @@ feature_a,feature_b,label
 Here `feature_a` is mean radius, `feature_b` is mean texture, and labels `0` and
 `1` mean malignant and benign respectively. Empty files, missing columns,
 missing or non-finite values, non-numeric features, invalid labels, and data too
-small for a stratified split produce clear validation errors.
+small for a stratified split produce clear validation errors. Training also
+stops before splitting when a feature directly or inversely copies the binary
+target, or when duplicate feature rows could cross partition boundaries.
 
 ## Test
 
