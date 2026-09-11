@@ -101,8 +101,8 @@ def _evaluate_partition(
     }
 
 
-def train_and_evaluate(data_path: str | Path) -> dict[str, float]:
-    """Fit on train only and return separate validation and test metrics."""
+def load_and_validate_dataset(data_path: str | Path) -> pd.DataFrame:
+    """Load a CSV and enforce the shared training data contract."""
     path = Path(data_path)
     if not path.is_file():
         raise FileNotFoundError(f"Dataset not found: {path}")
@@ -131,6 +131,12 @@ def train_and_evaluate(data_path: str | Path) -> dict[str, float]:
         raise ValueError("Label column must contain both binary classes 0 and 1")
 
     validate_no_obvious_leakage(data)
+    return data
+
+
+def train_and_evaluate(data_path: str | Path) -> dict[str, float]:
+    """Fit on train only and return separate validation and test metrics."""
+    data = load_and_validate_dataset(data_path)
     splits = split_dataset(data)
     model = LogisticRegression(random_state=42, class_weight="balanced")
     model.fit(splits.train[FEATURE_COLUMNS], splits.train["label"])

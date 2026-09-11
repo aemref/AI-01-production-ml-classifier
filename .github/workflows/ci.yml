@@ -21,5 +21,7 @@ jobs:
         run: python -m pytest -q
       - name: Run baseline command on real data
         run: python src/train.py --data data/breast_cancer_wisconsin_diagnostic.csv
+      - name: Compare baseline model candidates
+        run: python -m src.compare_models --data data/breast_cancer_wisconsin_diagnostic.csv
       - name: Run data quality risk analysis
         run: python src/data_quality.py --data data/breast_cancer_wisconsin_diagnostic.csv
