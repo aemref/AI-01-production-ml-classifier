@@ -16,7 +16,9 @@ testing, and CI; it is a learning project, not a medical diagnostic tool.
 The baseline uses Logistic Regression from scikit-learn. The pipeline reads a
 CSV file, validates its required columns and values, creates stratified
 train/validation/test partitions with a fixed random seed, fits a class-balanced
-model on train only, and reports separate validation and test metrics.
+model on train only, and reports separate validation and test metrics. A second
+command compares Logistic Regression, Decision Tree, and Random Forest using
+malignant-class precision, recall, F1, and ROC-AUC without selecting on test.
 
 The default dataset contains the mean radius and mean texture features. Its
 provenance, transformations, appropriate use, and risks are recorded in the
@@ -40,6 +42,17 @@ python src/train.py
 The last command trains and evaluates the baseline against the repository's
 licensed real-data subset. No API key, external service, or data download is
 required.
+
+Compare the three fixed baseline candidates:
+
+```bash
+python -m src.compare_models
+```
+
+Candidates are fitted on train only. Models meeting the provisional malignant
+precision floor are ranked on validation; only the selected model is then
+evaluated once on test. See the [comparison report](docs/week-03-model-comparison.md)
+and [model-card draft](docs/model-card.md).
 
 ## Run
 
