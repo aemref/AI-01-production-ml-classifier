@@ -4,6 +4,9 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -15,6 +18,7 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
+          cache-dependency-path: requirements-dev.txt
       - name: Install dependencies
         run: python -m pip install -r requirements-dev.txt
       - name: Run tests
@@ -25,3 +29,42 @@ jobs:
         run: python -m src.compare_models --data data/breast_cancer_wisconsin_diagnostic.csv
       - name: Run data quality risk analysis
         run: python src/data_quality.py --data data/breast_cancer_wisconsin_diagnostic.csv
+      - name: Compile source and tests
+        run: python -m compileall -q src tests
+      - name: Run bounded API benchmark
+        run: python -m src.benchmark_api --requests 50 --warmup 5
+      - name: Build inference container
+        run: docker build --tag ai01-classifier:ci .
+      - name: Start inference container
+        run: docker run --rm -d --name ai01-classifier-ci -p 8000:8000 ai01-classifier:ci
+      - name: Smoke test container API
+        run: |
+          python - <<'PY'
+          import json
+          import time
+          import urllib.request
+
+          for attempt in range(20):
+              try:
+                  health = json.load(urllib.request.urlopen(
+                      "http://127.0.0.1:8000/health", timeout=2
+                  ))
+                  break
+              except Exception:
+                  if attempt == 19:
+                      raise
+                  time.sleep(0.5)
+
+          assert health["status"] == "ok"
+          request = urllib.request.Request(
+              "http://127.0.0.1:8000/predict",
+              data=b'{"feature_a":17.99,"feature_b":10.38}',
+              headers={"Content-Type": "application/json"},
+          )
+          prediction = json.load(urllib.request.urlopen(request, timeout=2))
+          assert prediction["label"] in (0, 1)
+          assert prediction["model_version"] == health["model_version"]
+          PY
+      - name: Stop inference container
+        if: always()
+        run: docker stop ai01-classifier-ci || true
