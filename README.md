@@ -19,6 +19,8 @@ train/validation/test partitions with a fixed random seed, fits a class-balanced
 model on train only, and reports separate validation and test metrics. A second
 command compares Logistic Regression, Decision Tree, and Random Forest using
 malignant-class precision, recall, F1, and ROC-AUC without selecting on test.
+The selected baseline is also exposed through a typed FastAPI endpoint with
+request IDs, structured validation failures, and a non-root Docker image.
 
 The default dataset contains the mean radius and mean texture features. Its
 provenance, transformations, appropriate use, and risks are recorded in the
@@ -53,6 +55,43 @@ Candidates are fitted on train only. Models meeting the provisional malignant
 precision floor are ranked on validation; only the selected model is then
 evaluated once on test. See the [comparison report](docs/week-03-model-comparison.md)
 and [model-card draft](docs/model-card.md).
+
+## Serve Predictions
+
+Start the API locally after installing the runtime dependencies:
+
+```bash
+python -m uvicorn src.api:app --host 127.0.0.1 --port 8000
+```
+
+Then check readiness and request one prediction:
+
+```bash
+curl http://127.0.0.1:8000/health
+curl -X POST http://127.0.0.1:8000/predict \
+  -H 'Content-Type: application/json' \
+  -d '{"feature_a":17.99,"feature_b":10.38}'
+```
+
+Responses include the binary label, human-readable label, both class
+probabilities, confidence, and a dataset-derived model version. This educational
+endpoint is not a medical device and must not be used for diagnosis or treatment.
+
+Build and run the non-root container:
+
+```bash
+docker build -t ai01-classifier .
+docker run --rm -p 8000:8000 ai01-classifier
+```
+
+Measure the in-process HTTP path with fixed request and warmup counts:
+
+```bash
+python -m src.benchmark_api --requests 200 --warmup 20
+```
+
+The measured baseline, methodology, failure taxonomy, and limitations are in the
+[production inference report](docs/week-04-production-inference.md).
 
 ## Run
 
@@ -134,6 +173,9 @@ flowchart LR
     F --> H[Test metrics]
     I[pytest] --> J[GitHub Actions CI]
     B -. invalid input .-> K[Clear error]
+    D --> L[FastAPI predictor]
+    L --> M[Validated JSON response]
+    L -. invalid request .-> N[Structured 422 + request ID]
 ```
 
 ## Repository Structure
@@ -166,7 +208,10 @@ one 70/15/15 split. They are not a production or clinical performance claim.
 - The baseline uses only mean radius and mean texture, discarding 28 source
   features for a deliberately small first integration.
 - A single train/test split is insufficient for model selection.
-- No model artifact, serving API, monitoring, or data versioning exists yet.
+- The API retrains a deterministic small model at startup; no signed, persisted
+  model artifact or rollback mechanism exists yet.
+- The endpoint has request correlation and rejection logs, but no authentication,
+  rate limiting, distributed tracing, or drift monitoring.
 - A single malignant-recall metric still cannot replace a confusion matrix,
   uncertainty analysis, subgroup evaluation, or clinical validation.
 
@@ -182,5 +227,5 @@ one 70/15/15 split. They are not a production or clinical performance claim.
 
 ## Status
 
-Week 2: Real classification data, dataset licensing, data card, stronger input
-validation, tests, and CI integration.
+Week 4 in progress: typed inference API, reusable predictor, structured failure
+telemetry, non-root Docker image, API benchmark, and CI container smoke test.
