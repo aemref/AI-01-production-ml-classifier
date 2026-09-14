@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import pytest
@@ -49,6 +50,12 @@ def test_predict_rejects_missing_feature(client):
     response = client.post("/predict", json={"feature_a": 17.99})
 
     assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_request"
+    assert response.json()["error"]["request_id"] == response.headers["X-Request-ID"]
+    assert response.json()["error"]["details"][0]["location"] == [
+        "body",
+        "feature_b",
+    ]
 
 
 def test_predict_rejects_unknown_fields(client):
@@ -58,3 +65,34 @@ def test_predict_rejects_unknown_fields(client):
     )
 
     assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_request"
+
+
+def test_failure_log_is_structured_and_excludes_payload(caplog, client):
+    caplog.set_level("WARNING", logger="classifier.api")
+
+    response = client.post(
+        "/predict",
+        json={"feature_a": "sensitive-invalid-value", "feature_b": 10.38},
+    )
+
+    record = next(
+        record for record in caplog.records if "request_rejected" in record.message
+    )
+    logged = json.loads(record.message)
+    assert logged == {
+        "event": "request_rejected",
+        "request_id": response.headers["X-Request-ID"],
+        "path": "/predict",
+        "status_code": 422,
+        "error_code": "invalid_request",
+    }
+    assert "sensitive-invalid-value" not in record.message
+
+
+def test_each_response_has_a_unique_request_id(client):
+    first = client.get("/health")
+    second = client.get("/health")
+
+    assert len(first.headers["X-Request-ID"]) == 32
+    assert first.headers["X-Request-ID"] != second.headers["X-Request-ID"]

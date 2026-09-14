@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+import json
+import logging
 from pathlib import Path
 from typing import AsyncIterator
+from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from src.predictor import Predictor
@@ -15,6 +20,7 @@ from src.predictor import Predictor
 DEFAULT_DATA_PATH = (
     Path(__file__).parents[1] / "data" / "breast_cancer_wisconsin_diagnostic.csv"
 )
+LOGGER = logging.getLogger("classifier.api")
 
 
 class PredictionRequest(BaseModel):
@@ -59,6 +65,51 @@ def create_app(
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    @application.middleware("http")
+    async def add_request_id(request: Request, call_next):
+        request.state.request_id = uuid4().hex
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request.state.request_id
+        return response
+
+    @application.exception_handler(RequestValidationError)
+    async def validation_error(
+        request: Request,
+        error: RequestValidationError,
+    ) -> JSONResponse:
+        details = [
+            {
+                "location": list(item["loc"]),
+                "message": item["msg"],
+                "type": item["type"],
+            }
+            for item in error.errors()
+        ]
+        request_id = request.state.request_id
+        LOGGER.warning(
+            json.dumps(
+                {
+                    "event": "request_rejected",
+                    "request_id": request_id,
+                    "path": request.url.path,
+                    "status_code": 422,
+                    "error_code": "invalid_request",
+                }
+            )
+        )
+        return JSONResponse(
+            status_code=422,
+            content={
+                "error": {
+                    "code": "invalid_request",
+                    "message": "Request validation failed",
+                    "details": details,
+                    "request_id": request_id,
+                }
+            },
+            headers={"X-Request-ID": request_id},
+        )
 
     @application.get("/health", response_model=HealthResponse)
     def health(request: Request) -> HealthResponse:
