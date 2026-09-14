@@ -91,6 +91,7 @@ target, or when duplicate feature rows could cross partition boundaries.
 ## Test
 
 ```bash
+python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
