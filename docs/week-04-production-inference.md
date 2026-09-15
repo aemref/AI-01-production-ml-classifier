@@ -18,10 +18,12 @@ class probabilities, confidence, and a model version derived from the training
 dataset checksum. `GET /health` confirms that the predictor loaded and exposes
 the same model version.
 
-The service fits the validation-selected, class-balanced logistic regression on
-the train partition at process startup. It does not fit on validation or test
-rows. Training at startup is acceptable for this small baseline, but a future
-release must replace it with a signed, versioned artifact and rollback policy.
+The service loads the validation-selected, class-balanced logistic regression
+from a portable JSON artifact at process startup. It verifies the SHA-256
+sidecar and schema before serving traffic, and fails startup when either is
+invalid. Building the artifact fits on the train partition only; it never fits
+on validation or test rows. The [artifact and rollback policy](model-artifact.md)
+records the format, trust boundary, release checks, and rollback procedure.
 
 ## Failure handling
 
@@ -89,5 +91,5 @@ docker build -t ai01-classifier .
 docker run --rm -p 8000:8000 ai01-classifier
 ```
 
-Next work: persist and load a versioned model artifact, then add concurrency and
-external-network benchmarks before defining any latency objective.
+Next work: add concurrency and external-network container benchmarks before
+defining any latency objective.

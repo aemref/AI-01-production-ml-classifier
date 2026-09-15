@@ -43,7 +43,8 @@ python src/train.py
 
 The last command trains and evaluates the baseline against the repository's
 licensed real-data subset. No API key, external service, or data download is
-required.
+required. The API separately loads a checked-in, checksummed model artifact; it
+does not retrain during process startup.
 
 Compare the three fixed baseline candidates:
 
@@ -76,6 +77,16 @@ curl -X POST http://127.0.0.1:8000/predict \
 Responses include the binary label, human-readable label, both class
 probabilities, confidence, and a dataset-derived model version. This educational
 endpoint is not a medical device and must not be used for diagnosis or treatment.
+
+Verify or rebuild the portable inference artifact:
+
+```bash
+python -m src.verify_artifact
+python -m src.build_artifact
+```
+
+See the [artifact and rollback policy](docs/model-artifact.md) for the schema,
+integrity boundaries, release procedure, and tested rollback steps.
 
 Build and run the non-root container:
 
@@ -173,9 +184,11 @@ flowchart LR
     F --> H[Test metrics]
     I[pytest] --> J[GitHub Actions CI]
     B -. invalid input .-> K[Clear error]
-    D --> L[FastAPI predictor]
-    L --> M[Validated JSON response]
-    L -. invalid request .-> N[Structured 422 + request ID]
+    D --> L[Versioned JSON artifact]
+    L --> M[Checksum and contract validation]
+    M --> N[FastAPI predictor]
+    N --> O[Validated JSON response]
+    N -. invalid request .-> P[Structured 422 + request ID]
 ```
 
 ## Repository Structure
@@ -208,8 +221,8 @@ one 70/15/15 split. They are not a production or clinical performance claim.
 - The baseline uses only mean radius and mean texture, discarding 28 source
   features for a deliberately small first integration.
 - A single train/test split is insufficient for model selection.
-- The API retrains a deterministic small model at startup; no signed, persisted
-  model artifact or rollback mechanism exists yet.
+- The API artifact has checksum and schema validation plus a documented rollback
+  path, but it is not digitally signed and has no external provenance service.
 - The endpoint has request correlation and rejection logs, but no authentication,
   rate limiting, distributed tracing, or drift monitoring.
 - A single malignant-recall metric still cannot replace a confusion matrix,
@@ -227,5 +240,6 @@ one 70/15/15 split. They are not a production or clinical performance claim.
 
 ## Status
 
-Week 4 in progress: typed inference API, reusable predictor, structured failure
-telemetry, non-root Docker image, API benchmark, and CI container smoke test.
+Week 4 in progress: typed inference API, checksummed portable model artifact,
+fail-closed startup, structured failure telemetry, non-root Docker image, API
+benchmark, and CI container smoke test.
