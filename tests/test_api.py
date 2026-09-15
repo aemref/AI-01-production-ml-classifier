@@ -20,6 +20,14 @@ def client():
         yield test_client
 
 
+def test_default_app_loads_the_persisted_artifact():
+    with TestClient(create_app()) as artifact_client:
+        health = artifact_client.get("/health")
+
+    assert health.status_code == 200
+    assert health.json()["model_version"] == "logistic-regression-98b12889accb"
+
+
 def test_health_reports_loaded_model_version(client):
     response = client.get("/health")
 

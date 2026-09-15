@@ -10,6 +10,7 @@ def test_container_runs_api_as_non_root_with_healthcheck():
     assert dockerfile.startswith("FROM python:3.11-slim")
     assert "USER app" in dockerfile
     assert "HEALTHCHECK" in dockerfile
+    assert "COPY artifacts ./artifacts" in dockerfile
     assert '"src.api:app"' in dockerfile
     assert '"--host", "0.0.0.0"' in dockerfile
 

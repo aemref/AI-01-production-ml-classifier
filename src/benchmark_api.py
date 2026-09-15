@@ -13,8 +13,8 @@ from typing import Any
 
 from fastapi.testclient import TestClient
 
-from src.api import DEFAULT_DATA_PATH, create_app
-from src.predictor import Predictor
+from src.api import create_app
+from src.predictor import DEFAULT_ARTIFACT_PATH, Predictor
 
 
 DEFAULT_PAYLOAD = {"feature_a": 17.99, "feature_b": 10.38}
@@ -94,12 +94,12 @@ def benchmark_client(
 
 
 def run_benchmark(
-    data_path: str | Path = DEFAULT_DATA_PATH,
+    artifact_path: str | Path = DEFAULT_ARTIFACT_PATH,
     *,
     request_count: int = 200,
     warmup_count: int = 20,
 ) -> BenchmarkResult:
-    predictor = Predictor.from_dataset(data_path)
+    predictor = Predictor.from_artifact(artifact_path)
     with TestClient(create_app(predictor)) as client:
         return benchmark_client(
             client,
@@ -110,14 +110,14 @@ def run_benchmark(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Benchmark the inference API")
-    parser.add_argument("--data", default=str(DEFAULT_DATA_PATH))
+    parser.add_argument("--artifact", default=str(DEFAULT_ARTIFACT_PATH))
     parser.add_argument("--requests", type=int, default=200)
     parser.add_argument("--warmup", type=int, default=20)
     args = parser.parse_args()
 
     try:
         result = run_benchmark(
-            args.data,
+            args.artifact,
             request_count=args.requests,
             warmup_count=args.warmup,
         )

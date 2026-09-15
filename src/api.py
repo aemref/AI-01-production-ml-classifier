@@ -14,12 +14,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from src.predictor import Predictor
+from src.predictor import DEFAULT_ARTIFACT_PATH, Predictor
 
 
-DEFAULT_DATA_PATH = (
-    Path(__file__).parents[1] / "data" / "breast_cancer_wisconsin_diagnostic.csv"
-)
 LOGGER = logging.getLogger("classifier.api")
 
 
@@ -51,13 +48,13 @@ class HealthResponse(BaseModel):
 def create_app(
     predictor: Predictor | None = None,
     *,
-    data_path: str | Path = DEFAULT_DATA_PATH,
+    artifact_path: str | Path = DEFAULT_ARTIFACT_PATH,
 ) -> FastAPI:
-    """Create an application, optionally injecting a fitted predictor for tests."""
+    """Create an application, optionally injecting a predictor for tests."""
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        app.state.predictor = predictor or Predictor.from_dataset(data_path)
+        app.state.predictor = predictor or Predictor.from_artifact(artifact_path)
         yield
 
     application = FastAPI(
