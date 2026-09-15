@@ -1,0 +1,38 @@
+{
+  "dataset": {
+    "rows": 569,
+    "sha256": "98b12889accbae788456d9442fa0753d2d15a361241b543f9fe21795176d1303"
+  },
+  "model": {
+    "class_labels": [
+      0,
+      1
+    ],
+    "classifier_coefficients": [
+      -3.100854428737666,
+      -0.7354911804588561
+    ],
+    "classifier_intercept": 0.1748481461745717,
+    "feature_columns": [
+      "feature_a",
+      "feature_b"
+    ],
+    "scaler_mean": [
+      14.093846733668343,
+      19.34153266331658
+    ],
+    "scaler_scale": [
+      3.485170933585385,
+      4.494799777284616
+    ],
+    "type": "standard-scaler-logistic-regression"
+  },
+  "model_version": "logistic-regression-98b12889accb",
+  "schema_version": 1,
+  "training": {
+    "random_state": 42,
+    "test_size": 0.15,
+    "train_rows": 398,
+    "validation_size": 0.15
+  }
+}
