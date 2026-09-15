@@ -5,6 +5,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from src.api import create_app
+from src.model_artifact import ArtifactValidationError
 from src.predictor import Predictor
 
 
@@ -26,6 +27,15 @@ def test_default_app_loads_the_persisted_artifact():
 
     assert health.status_code == 200
     assert health.json()["model_version"] == "logistic-regression-98b12889accb"
+
+
+def test_app_fails_closed_when_artifact_integrity_is_missing(tmp_path):
+    artifact_path = tmp_path / "untrusted.json"
+    artifact_path.write_text("{}")
+
+    with pytest.raises(ArtifactValidationError, match="checksum not found"):
+        with TestClient(create_app(artifact_path=artifact_path)):
+            pass
 
 
 def test_health_reports_loaded_model_version(client):

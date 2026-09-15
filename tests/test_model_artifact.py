@@ -1,4 +1,5 @@
 import json
+from hashlib import sha256
 from pathlib import Path
 
 import pytest
@@ -49,4 +50,29 @@ def test_load_rejects_artifact_without_checksum(tmp_path, artifact):
     artifact_path.write_text(json.dumps(artifact))
 
     with pytest.raises(ArtifactValidationError, match="checksum not found"):
+        load_artifact(artifact_path)
+
+
+def test_load_rejects_artifact_tampering(tmp_path, artifact):
+    artifact_path = tmp_path / "model.json"
+    write_artifact(artifact, artifact_path)
+    artifact_path.write_text(
+        artifact_path.read_text().replace("-3.100854428737666", "3.100854428737666")
+    )
+
+    with pytest.raises(ArtifactValidationError, match="checksum mismatch"):
+        load_artifact(artifact_path)
+
+
+def test_load_rejects_rechecksummed_incompatible_contract(tmp_path, artifact):
+    artifact_path = tmp_path / "model.json"
+    incompatible = json.loads(json.dumps(artifact))
+    incompatible["model"]["feature_columns"] = ["feature_b", "feature_a"]
+    contents = (json.dumps(incompatible, indent=2, sort_keys=True) + "\n").encode()
+    artifact_path.write_bytes(contents)
+    checksum_path_for(artifact_path).write_text(
+        f"{sha256(contents).hexdigest()}  {artifact_path.name}\n"
+    )
+
+    with pytest.raises(ArtifactValidationError, match="feature contract"):
         load_artifact(artifact_path)

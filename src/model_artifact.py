@@ -18,6 +18,13 @@ from src.train import FEATURE_COLUMNS, load_and_validate_dataset, split_dataset
 ARTIFACT_SCHEMA_VERSION = 1
 MODEL_TYPE = "standard-scaler-logistic-regression"
 DEFAULT_RANDOM_STATE = 42
+EXPECTED_TOP_LEVEL_FIELDS = {
+    "schema_version",
+    "model_version",
+    "dataset",
+    "training",
+    "model",
+}
 
 
 class ArtifactValidationError(ValueError):
@@ -138,6 +145,8 @@ def validate_artifact(artifact: Mapping[str, Any]) -> None:
     """Reject incompatible or incomplete artifact metadata and parameters."""
     if not isinstance(artifact, Mapping):
         raise ArtifactValidationError("Model artifact root must be an object")
+    if set(artifact) != EXPECTED_TOP_LEVEL_FIELDS:
+        raise ArtifactValidationError("Model artifact fields are incompatible")
     if artifact.get("schema_version") != ARTIFACT_SCHEMA_VERSION:
         raise ArtifactValidationError("Unsupported model artifact schema version")
     version = artifact.get("model_version")
@@ -156,6 +165,33 @@ def validate_artifact(artifact: Mapping[str, Any]) -> None:
         raise ArtifactValidationError("Model artifact dataset checksum is invalid")
     if version != f"logistic-regression-{dataset_checksum[:12]}":
         raise ArtifactValidationError("Model artifact version does not match its dataset")
+    dataset_rows = dataset.get("rows")
+    if isinstance(dataset_rows, bool) or not isinstance(dataset_rows, int):
+        raise ArtifactValidationError("Model artifact dataset row count is invalid")
+    if dataset_rows <= 0:
+        raise ArtifactValidationError("Model artifact dataset row count is invalid")
+
+    training = artifact.get("training")
+    if not isinstance(training, Mapping):
+        raise ArtifactValidationError("Model artifact training metadata is missing")
+    expected_training = {
+        "random_state": DEFAULT_RANDOM_STATE,
+        "validation_size": 0.15,
+        "test_size": 0.15,
+    }
+    for field, expected in expected_training.items():
+        if training.get(field) != expected:
+            raise ArtifactValidationError(
+                f"Model artifact training field {field} is incompatible"
+            )
+    train_rows = training.get("train_rows")
+    if (
+        isinstance(train_rows, bool)
+        or not isinstance(train_rows, int)
+        or train_rows <= 0
+        or train_rows >= dataset_rows
+    ):
+        raise ArtifactValidationError("Model artifact training row count is invalid")
 
     model = artifact.get("model")
     if not isinstance(model, Mapping):
