@@ -128,6 +128,25 @@ def load_artifact(artifact_path: str | Path) -> dict[str, Any]:
     return artifact
 
 
+def verify_artifact_dataset(
+    artifact_path: str | Path, data_path: str | Path
+) -> dict[str, Any]:
+    """Verify artifact integrity and bind it to the current validated dataset."""
+    artifact = load_artifact(artifact_path)
+    dataset_path = Path(data_path)
+    data = load_and_validate_dataset(dataset_path)
+    actual_checksum = sha256(dataset_path.read_bytes()).hexdigest()
+    if artifact["dataset"]["sha256"] != actual_checksum:
+        raise ArtifactValidationError(
+            "Model artifact dataset checksum does not match the current dataset"
+        )
+    if artifact["dataset"]["rows"] != len(data):
+        raise ArtifactValidationError(
+            "Model artifact row count does not match the current dataset"
+        )
+    return artifact
+
+
 def _finite_number_list(value: Any, *, field: str) -> list[float]:
     if not isinstance(value, list) or len(value) != len(FEATURE_COLUMNS):
         raise ArtifactValidationError(

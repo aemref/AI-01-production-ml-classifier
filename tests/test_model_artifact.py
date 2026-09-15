@@ -9,6 +9,7 @@ from src.model_artifact import (
     build_artifact,
     checksum_path_for,
     load_artifact,
+    verify_artifact_dataset,
     write_artifact,
 )
 
@@ -76,3 +77,24 @@ def test_load_rejects_rechecksummed_incompatible_contract(tmp_path, artifact):
 
     with pytest.raises(ArtifactValidationError, match="feature contract"):
         load_artifact(artifact_path)
+
+
+def test_artifact_verification_binds_the_model_to_its_dataset(tmp_path, artifact):
+    artifact_path = tmp_path / "model.json"
+    write_artifact(artifact, artifact_path)
+
+    verified = verify_artifact_dataset(artifact_path, REAL_DATA_PATH)
+
+    assert verified["model_version"] == artifact["model_version"]
+
+
+def test_artifact_verification_rejects_a_different_dataset(tmp_path, artifact):
+    artifact_path = tmp_path / "model.json"
+    changed_data_path = tmp_path / "changed.csv"
+    write_artifact(artifact, artifact_path)
+    changed_data_path.write_bytes(
+        REAL_DATA_PATH.read_bytes().replace(b"17.99", b"17.98", 1)
+    )
+
+    with pytest.raises(ArtifactValidationError, match="dataset checksum"):
+        verify_artifact_dataset(artifact_path, changed_data_path)
