@@ -1,6 +1,31 @@
+from io import BytesIO
+from urllib.error import HTTPError, URLError
+from urllib.request import Request
+
 import pytest
 
-from src.benchmark_http import RequestObservation, summarize_observations
+from src.benchmark_http import (
+    RequestObservation,
+    normalize_base_url,
+    perform_prediction_request,
+    summarize_observations,
+)
+
+
+class StubResponse:
+    def __init__(self, status=200):
+        self.status = status
+        self.was_read = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return None
+
+    def read(self):
+        self.was_read = True
+        return b"{}"
 
 
 def test_external_summary_uses_wall_time_and_preserves_failures():
@@ -39,3 +64,79 @@ def test_external_summary_rejects_invalid_measurements(
 ):
     with pytest.raises(ValueError, match=message):
         summarize_observations(observations, wall_seconds=wall_seconds)
+
+
+def test_prediction_request_sends_json_and_records_http_status():
+    response = StubResponse()
+    captured = {}
+    timestamps = iter([1.0, 1.025])
+
+    def opener(request, *, timeout):
+        captured["request"] = request
+        captured["timeout"] = timeout
+        return response
+
+    result = perform_prediction_request(
+        "http://127.0.0.1:8000/",
+        timeout_seconds=1.5,
+        clock=lambda: next(timestamps),
+        opener=opener,
+    )
+
+    request: Request = captured["request"]
+    assert request.full_url == "http://127.0.0.1:8000/predict"
+    assert request.method == "POST"
+    assert request.headers["Content-type"] == "application/json"
+    assert request.data == b'{"feature_a": 17.99, "feature_b": 10.38}'
+    assert captured["timeout"] == 1.5
+    assert response.was_read is True
+    assert result == RequestObservation(0.02499999999999991, 200)
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected"),
+    [
+        (
+            HTTPError(
+                "http://localhost/predict",
+                503,
+                "unavailable",
+                {},
+                BytesIO(),
+            ),
+            RequestObservation(0.1, 503),
+        ),
+        (URLError(ConnectionRefusedError()), RequestObservation(0.1, None, "connection_error")),
+        (TimeoutError(), RequestObservation(0.1, None, "timeout")),
+    ],
+)
+def test_prediction_request_classifies_failures(raised, expected):
+    timestamps = iter([0.0, 0.1])
+
+    def opener(_request, *, timeout):
+        assert timeout == 2.0
+        raise raised
+
+    result = perform_prediction_request(
+        "http://localhost:8000",
+        timeout_seconds=2.0,
+        clock=lambda: next(timestamps),
+        opener=opener,
+    )
+
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "localhost:8000",
+        "ftp://localhost/model",
+        "http://user:secret@localhost",
+        "http://localhost?token=secret",
+        "http://localhost#fragment",
+    ],
+)
+def test_base_url_rejects_ambiguous_or_sensitive_targets(url):
+    with pytest.raises(ValueError, match="Base URL"):
+        normalize_base_url(url)

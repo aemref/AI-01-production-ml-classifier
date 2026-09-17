@@ -4,8 +4,17 @@ from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass
+import json
 from math import ceil
+import socket
+from time import perf_counter
 from typing import Sequence
+from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit, urlunsplit
+from urllib.request import Request, urlopen
+
+
+DEFAULT_PAYLOAD = {"feature_a": 17.99, "feature_b": 10.38}
 
 
 @dataclass(frozen=True)
@@ -32,6 +41,57 @@ class HttpBenchmarkResult:
     latency_ms_max: float
     status_counts: dict[str, int]
     failure_types: dict[str, int]
+
+
+def normalize_base_url(base_url: str) -> str:
+    """Validate a benchmark target and return it without a trailing slash."""
+    parsed = urlsplit(base_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("Base URL must be an absolute HTTP or HTTPS URL")
+    if parsed.username or parsed.password:
+        raise ValueError("Base URL must not contain credentials")
+    if parsed.query or parsed.fragment:
+        raise ValueError("Base URL must not contain a query or fragment")
+
+    path = parsed.path.rstrip("/")
+    return urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
+
+
+def perform_prediction_request(
+    base_url: str,
+    *,
+    timeout_seconds: float,
+    clock=perf_counter,
+    opener=urlopen,
+) -> RequestObservation:
+    """Send one prediction request and retain failures as observations."""
+    if timeout_seconds <= 0:
+        raise ValueError("Request timeout must be positive")
+
+    target = f"{normalize_base_url(base_url)}/predict"
+    request = Request(
+        target,
+        data=json.dumps(DEFAULT_PAYLOAD).encode("utf-8"),
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    started_at = clock()
+    try:
+        with opener(request, timeout=timeout_seconds) as response:
+            response.read()
+            status_code = response.status
+        return RequestObservation(clock() - started_at, status_code)
+    except HTTPError as error:
+        return RequestObservation(clock() - started_at, error.code)
+    except (TimeoutError, socket.timeout):
+        return RequestObservation(clock() - started_at, None, "timeout")
+    except URLError as error:
+        failure_type = (
+            "timeout"
+            if isinstance(error.reason, (TimeoutError, socket.timeout))
+            else "connection_error"
+        )
+        return RequestObservation(clock() - started_at, None, failure_type)
 
 
 def _nearest_rank(values: Sequence[float], percentile: float) -> float:
