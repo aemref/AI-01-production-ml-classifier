@@ -1,4 +1,5 @@
 from io import BytesIO
+import json
 from threading import Lock
 from time import sleep
 from urllib.error import HTTPError, URLError
@@ -6,7 +7,9 @@ from urllib.request import Request
 
 import pytest
 
+import src.benchmark_http as benchmark_http
 from src.benchmark_http import (
+    HttpBenchmarkResult,
     RequestObservation,
     normalize_base_url,
     perform_prediction_request,
@@ -236,3 +239,68 @@ def test_http_benchmark_rejects_unsafe_bounds(
             warmup_count=warmup_count,
             concurrency=concurrency,
         )
+
+
+def test_cli_emits_configuration_with_machine_readable_result(monkeypatch, capsys):
+    expected = HttpBenchmarkResult(
+        request_count=10,
+        success_count=10,
+        failure_count=0,
+        total_wall_seconds=0.1,
+        throughput_requests_per_second=100.0,
+        latency_ms_min=1.0,
+        latency_ms_median=2.0,
+        latency_ms_p95=3.0,
+        latency_ms_max=4.0,
+        status_counts={"200": 10},
+        failure_types={},
+    )
+    captured = {}
+
+    def fake_run(target, **options):
+        captured["target"] = target
+        captured["options"] = options
+        return expected
+
+    monkeypatch.setattr(benchmark_http, "run_http_benchmark", fake_run)
+    benchmark_http.main(
+        [
+            "--base-url",
+            "http://localhost:9000/",
+            "--requests",
+            "10",
+            "--warmup",
+            "2",
+            "--concurrency",
+            "5",
+            "--timeout",
+            "1.5",
+        ]
+    )
+
+    report = json.loads(capsys.readouterr().out)
+    assert captured == {
+        "target": "http://localhost:9000",
+        "options": {
+            "request_count": 10,
+            "warmup_count": 2,
+            "concurrency": 5,
+            "timeout_seconds": 1.5,
+        },
+    }
+    assert report["target"] == "http://localhost:9000"
+    assert report["warmup_count"] == 2
+    assert report["concurrency"] == 5
+    assert report["failure_count"] == 0
+
+
+def test_cli_returns_usage_error_when_target_is_unavailable(monkeypatch, capsys):
+    def fake_run(*_args, **_kwargs):
+        raise RuntimeError("Warmup request failed: connection_error")
+
+    monkeypatch.setattr(benchmark_http, "run_http_benchmark", fake_run)
+    with pytest.raises(SystemExit) as exit_info:
+        benchmark_http.main([])
+
+    assert exit_info.value.code == 2
+    assert "Warmup request failed: connection_error" in capsys.readouterr().err

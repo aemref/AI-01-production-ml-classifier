@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+import argparse
 from collections import Counter
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import json
 from math import ceil
 import socket
@@ -139,6 +140,47 @@ def run_http_benchmark(
     wall_seconds = clock() - started_at
 
     return summarize_observations(observations, wall_seconds=wall_seconds)
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        description="Benchmark a running inference API over HTTP",
+    )
+    parser.add_argument(
+        "--base-url",
+        default="http://127.0.0.1:8000",
+        help="Service root URL; /predict is appended automatically",
+    )
+    parser.add_argument("--requests", type=int, default=200)
+    parser.add_argument("--warmup", type=int, default=20)
+    parser.add_argument("--concurrency", type=int, default=4)
+    parser.add_argument("--timeout", type=float, default=2.0)
+    args = parser.parse_args(argv)
+
+    try:
+        target = normalize_base_url(args.base_url)
+        result = run_http_benchmark(
+            target,
+            request_count=args.requests,
+            warmup_count=args.warmup,
+            concurrency=args.concurrency,
+            timeout_seconds=args.timeout,
+        )
+    except (RuntimeError, ValueError) as error:
+        parser.error(str(error))
+
+    report = {
+        "target": target,
+        "warmup_count": args.warmup,
+        "concurrency": args.concurrency,
+        "timeout_seconds": args.timeout,
+        **asdict(result),
+    }
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    main()
 
 
 def _nearest_rank(values: Sequence[float], percentile: float) -> float:
