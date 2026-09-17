@@ -1,4 +1,6 @@
 from io import BytesIO
+from threading import Lock
+from time import sleep
 from urllib.error import HTTPError, URLError
 from urllib.request import Request
 
@@ -8,6 +10,7 @@ from src.benchmark_http import (
     RequestObservation,
     normalize_base_url,
     perform_prediction_request,
+    run_http_benchmark,
     summarize_observations,
 )
 
@@ -140,3 +143,96 @@ def test_prediction_request_classifies_failures(raised, expected):
 def test_base_url_rejects_ambiguous_or_sensitive_targets(url):
     with pytest.raises(ValueError, match="Base URL"):
         normalize_base_url(url)
+
+
+def test_http_benchmark_excludes_warmup_and_counts_concurrent_failures():
+    responses = iter(
+        [
+            RequestObservation(0.001, 200),
+            RequestObservation(0.010, 200),
+            RequestObservation(0.020, 503),
+            RequestObservation(0.030, None, "timeout"),
+        ]
+    )
+    timestamps = iter([10.0, 10.05])
+
+    def requester(base_url, *, timeout_seconds):
+        assert base_url == "http://localhost:8000"
+        assert timeout_seconds == 1.0
+        return next(responses)
+
+    result = run_http_benchmark(
+        "http://localhost:8000/",
+        request_count=3,
+        warmup_count=1,
+        concurrency=2,
+        timeout_seconds=1.0,
+        requester=requester,
+        clock=lambda: next(timestamps),
+    )
+
+    assert result.request_count == 3
+    assert result.failure_count == 2
+    assert result.throughput_requests_per_second == pytest.approx(60.0)
+    assert result.failure_types == {"http_503": 1, "timeout": 1}
+
+
+def test_http_benchmark_never_exceeds_requested_concurrency():
+    lock = Lock()
+    active = 0
+    maximum_active = 0
+
+    def requester(_base_url, *, timeout_seconds):
+        nonlocal active, maximum_active
+        assert timeout_seconds == 2.0
+        with lock:
+            active += 1
+            maximum_active = max(maximum_active, active)
+        sleep(0.01)
+        with lock:
+            active -= 1
+        return RequestObservation(0.01, 200)
+
+    timestamps = iter([0.0, 0.08])
+    result = run_http_benchmark(
+        "http://localhost:8000",
+        request_count=8,
+        warmup_count=0,
+        concurrency=3,
+        requester=requester,
+        clock=lambda: next(timestamps),
+    )
+
+    assert result.success_count == 8
+    assert maximum_active == 3
+
+
+def test_http_benchmark_fails_fast_when_warmup_cannot_succeed():
+    def requester(_base_url, *, timeout_seconds):
+        return RequestObservation(timeout_seconds, None, "connection_error")
+
+    with pytest.raises(RuntimeError, match="Warmup request failed: connection_error"):
+        run_http_benchmark(
+            "http://localhost:8000",
+            request_count=1,
+            warmup_count=1,
+            requester=requester,
+        )
+
+
+@pytest.mark.parametrize(
+    ("request_count", "warmup_count", "concurrency"),
+    [(0, 0, 1), (1, -1, 1), (1, 0, 0), (1, 0, 65)],
+)
+def test_http_benchmark_rejects_unsafe_bounds(
+    request_count,
+    warmup_count,
+    concurrency,
+):
+    with pytest.raises(ValueError):
+        run_http_benchmark(
+            "http://localhost:8000",
+            request_count=request_count,
+            warmup_count=warmup_count,
+            concurrency=concurrency,
+        )

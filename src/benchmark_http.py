@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 import json
 from math import ceil
@@ -15,6 +17,7 @@ from urllib.request import Request, urlopen
 
 
 DEFAULT_PAYLOAD = {"feature_a": 17.99, "feature_b": 10.38}
+MAX_CONCURRENCY = 64
 
 
 @dataclass(frozen=True)
@@ -92,6 +95,50 @@ def perform_prediction_request(
             else "connection_error"
         )
         return RequestObservation(clock() - started_at, None, failure_type)
+
+
+def run_http_benchmark(
+    base_url: str,
+    *,
+    request_count: int = 200,
+    warmup_count: int = 20,
+    concurrency: int = 4,
+    timeout_seconds: float = 2.0,
+    requester: Callable[..., RequestObservation] = perform_prediction_request,
+    clock=perf_counter,
+) -> HttpBenchmarkResult:
+    """Run bounded concurrent requests against an already-started service."""
+    if request_count <= 0 or warmup_count < 0:
+        raise ValueError("Request count must be positive and warmup cannot be negative")
+    if not 1 <= concurrency <= MAX_CONCURRENCY:
+        raise ValueError(f"Concurrency must be between 1 and {MAX_CONCURRENCY}")
+    if timeout_seconds <= 0:
+        raise ValueError("Request timeout must be positive")
+
+    normalized_url = normalize_base_url(base_url)
+    for _ in range(warmup_count):
+        observation = requester(
+            normalized_url,
+            timeout_seconds=timeout_seconds,
+        )
+        if observation.status_code != 200:
+            failure = observation.failure_type or f"http_{observation.status_code}"
+            raise RuntimeError(f"Warmup request failed: {failure}")
+
+    started_at = clock()
+    with ThreadPoolExecutor(max_workers=concurrency) as executor:
+        futures = [
+            executor.submit(
+                requester,
+                normalized_url,
+                timeout_seconds=timeout_seconds,
+            )
+            for _ in range(request_count)
+        ]
+        observations = [future.result() for future in futures]
+    wall_seconds = clock() - started_at
+
+    return summarize_observations(observations, wall_seconds=wall_seconds)
 
 
 def _nearest_rank(values: Sequence[float], percentile: float) -> float:
