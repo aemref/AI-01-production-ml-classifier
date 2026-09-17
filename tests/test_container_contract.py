@@ -19,3 +19,16 @@ def test_container_context_excludes_local_and_development_artifacts():
     excluded = set((ROOT / ".dockerignore").read_text().splitlines())
 
     assert {".git", ".venv", ".pytest_cache", "tests", "notebooks"} <= excluded
+
+
+def test_ci_benchmarks_the_running_container_over_external_http():
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+
+    start = workflow.index("docker run --rm -d")
+    benchmark = workflow.index("python -m src.benchmark_http")
+    stop = workflow.index("docker stop ai01-classifier-ci")
+
+    assert start < benchmark < stop
+    assert "--base-url http://127.0.0.1:8000" in workflow
+    assert "--concurrency 4" in workflow
+    assert "--timeout 2" in workflow

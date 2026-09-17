@@ -67,6 +67,14 @@ jobs:
           assert prediction["label"] in (0, 1)
           assert prediction["model_version"] == health["model_version"]
           PY
+      - name: Benchmark container over HTTP
+        run: >-
+          python -m src.benchmark_http
+          --base-url http://127.0.0.1:8000
+          --requests 50
+          --warmup 5
+          --concurrency 4
+          --timeout 2
       - name: Stop inference container
         if: always()
         run: docker stop ai01-classifier-ci || true
