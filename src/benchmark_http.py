@@ -214,6 +214,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         **asdict(result),
     }
     print(json.dumps(report, indent=2))
+    if result.failure_count:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
