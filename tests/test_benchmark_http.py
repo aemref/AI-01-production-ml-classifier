@@ -1,5 +1,7 @@
 from io import BytesIO
 import json
+import subprocess
+import sys
 from threading import Lock
 from time import sleep
 from urllib.error import HTTPError, URLError
@@ -380,3 +382,28 @@ def test_cli_reports_measured_failures_and_exits_unsuccessfully(monkeypatch, cap
     assert report["request_count"] == 2
     assert report["failure_count"] == 1
     assert report["failure_types"] == {"invalid_response": 1}
+
+
+def test_module_entrypoint_summarizes_failed_request():
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "src.benchmark_http",
+            "--base-url",
+            "http://127.0.0.1:1",
+            "--requests",
+            "1",
+            "--warmup",
+            "0",
+            "--timeout",
+            "0.2",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=5,
+        check=False,
+    )
+
+    assert completed.returncode == 1
+    assert json.loads(completed.stdout)["failure_count"] == 1

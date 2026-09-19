@@ -218,10 +218,6 @@ def main(argv: Sequence[str] | None = None) -> None:
         raise SystemExit(1)
 
 
-if __name__ == "__main__":
-    main()
-
-
 def _nearest_rank(values: Sequence[float], percentile: float) -> float:
     ordered = sorted(values)
     rank = max(1, ceil(percentile * len(ordered)))
@@ -275,3 +271,7 @@ def summarize_observations(
         status_counts=dict(sorted(status_counts.items())),
         failure_types=dict(sorted(failure_types.items())),
     )
+
+
+if __name__ == "__main__":
+    main()
