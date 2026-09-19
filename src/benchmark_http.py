@@ -8,7 +8,7 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 import json
-from math import ceil
+from math import ceil, isfinite
 import socket
 from time import perf_counter
 from typing import Sequence
@@ -61,6 +61,38 @@ def normalize_base_url(base_url: str) -> str:
     return urlunsplit((parsed.scheme, parsed.netloc, path, "", ""))
 
 
+def _valid_prediction_response(body: bytes) -> bool:
+    """Reject unrelated HTTP 200 responses and malformed classifier results."""
+    try:
+        prediction = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    if not isinstance(prediction, dict):
+        return False
+
+    label = prediction.get("label")
+    if type(label) is not int or label not in (0, 1):
+        return False
+    if prediction.get("label_name") != {0: "malignant", 1: "benign"}[label]:
+        return False
+    if not isinstance(prediction.get("model_version"), str) or not prediction["model_version"]:
+        return False
+
+    probabilities = [
+        prediction.get("malignant_probability"),
+        prediction.get("benign_probability"),
+    ]
+    confidence = prediction.get("confidence")
+    if any(
+        type(value) not in (int, float) or not isfinite(value) or not 0 <= value <= 1
+        for value in [*probabilities, confidence]
+    ):
+        return False
+    if abs(sum(probabilities) - 1) > 1e-6:
+        return False
+    return abs(confidence - probabilities[label]) <= 1e-6
+
+
 def perform_prediction_request(
     base_url: str,
     *,
@@ -82,9 +114,14 @@ def perform_prediction_request(
     started_at = clock()
     try:
         with opener(request, timeout=timeout_seconds) as response:
-            response.read()
+            body = response.read()
             status_code = response.status
-        return RequestObservation(clock() - started_at, status_code)
+        failure_type = (
+            "invalid_response"
+            if status_code == 200 and not _valid_prediction_response(body)
+            else None
+        )
+        return RequestObservation(clock() - started_at, status_code, failure_type)
     except HTTPError as error:
         return RequestObservation(clock() - started_at, error.code)
     except (TimeoutError, socket.timeout):
@@ -122,7 +159,7 @@ def run_http_benchmark(
             normalized_url,
             timeout_seconds=timeout_seconds,
         )
-        if observation.status_code != 200:
+        if observation.status_code != 200 or observation.failure_type:
             failure = observation.failure_type or f"http_{observation.status_code}"
             raise RuntimeError(f"Warmup request failed: {failure}")
 
@@ -216,9 +253,12 @@ def summarize_observations(
     failure_types = Counter(
         item.failure_type or f"http_{item.status_code}"
         for item in observations
-        if item.status_code != 200
+        if item.status_code != 200 or item.failure_type
     )
-    success_count = sum(item.status_code == 200 for item in observations)
+    success_count = sum(
+        item.status_code == 200 and item.failure_type is None
+        for item in observations
+    )
 
     return HttpBenchmarkResult(
         request_count=len(observations),
