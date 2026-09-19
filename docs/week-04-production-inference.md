@@ -81,6 +81,36 @@ repeatable regression baseline only; they are not a capacity claim or service
 level objective. CI runs a shorter 50-request sanity benchmark without asserting
 machine-dependent timing thresholds.
 
+## External HTTP measurement
+
+On 2026-09-19, the API ran under Uvicorn on local loopback (`127.0.0.1:8001`)
+with Python 3.14.7 on `arm64`. The separate benchmark process sent 20 warmups
+and then 200 measured prediction requests with four concurrent workers and a
+two-second per-request timeout:
+
+```bash
+python -m uvicorn src.api:app --host 127.0.0.1 --port 8001
+python -m src.benchmark_http --base-url http://127.0.0.1:8001 \
+  --requests 200 --warmup 20 --concurrency 4 --timeout 2
+```
+
+| Measure | Result |
+|---|---:|
+| Successful / failed requests | 200 / 0 |
+| Total measured wall time | 0.119 s |
+| Throughput | 1,673.7 requests/s |
+| Minimum latency | 1.278 ms |
+| Median latency | 2.305 ms |
+| p95 latency | 2.667 ms |
+| Maximum latency | 3.495 ms |
+
+The benchmark validates the prediction response, counts HTTP errors, transport
+errors, timeouts, and invalid `200` bodies separately, and exits nonzero when
+measured requests fail. It prints JSON even on measured failure so CI retains
+the failure breakdown. Throughput uses wall time; latency includes each full
+HTTP request and response. This is a local-process TCP measurement, not a Docker
+or production measurement. No timing threshold is asserted across machines.
+
 ## Reproduction
 
 ```bash
@@ -91,5 +121,6 @@ docker build -t ai01-classifier .
 docker run --rm -p 8000:8000 ai01-classifier
 ```
 
-Next work: add concurrency and external-network container benchmarks before
-defining any latency objective.
+Start the API or container in another terminal, then run the external HTTP
+benchmark command above against its listening port. CI runs that command against
+the container after its smoke test.

@@ -1,5 +1,7 @@
 # AI-01 Production ML Classifier
 
+[![CI](https://github.com/aemref/AI-01-production-ml-classifier/actions/workflows/ci.yml/badge.svg)](https://github.com/aemref/AI-01-production-ml-classifier/actions/workflows/ci.yml)
+
 An **AI/ML + production engineering** learning project. It contains a small,
 testable classification pipeline and the repository practices needed to evolve
 it safely.
@@ -100,6 +102,18 @@ Measure the in-process HTTP path with fixed request and warmup counts:
 ```bash
 python -m src.benchmark_api --requests 200 --warmup 20
 ```
+
+With the API or container listening on port 8000, measure the external HTTP
+path separately:
+
+```bash
+python -m src.benchmark_http --base-url http://127.0.0.1:8000 \
+  --requests 200 --warmup 20 --concurrency 4 --timeout 2
+```
+
+The external command checks prediction bodies, reports failed requests in JSON,
+and exits nonzero if any measured request fails. Its local loopback result is in
+the [production inference report](docs/week-04-production-inference.md).
 
 The measured baseline, methodology, failure taxonomy, and limitations are in the
 [production inference report](docs/week-04-production-inference.md).
@@ -242,4 +256,4 @@ one 70/15/15 split. They are not a production or clinical performance claim.
 
 Week 4 in progress: typed inference API, checksummed portable model artifact,
 fail-closed startup, structured failure telemetry, non-root Docker image, API
-benchmark, and CI container smoke test.
+and external HTTP benchmarks, and CI container smoke test.
