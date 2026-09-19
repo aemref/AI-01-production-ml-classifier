@@ -354,3 +354,29 @@ def test_cli_returns_usage_error_when_target_is_unavailable(monkeypatch, capsys)
 
     assert exit_info.value.code == 2
     assert "Warmup request failed: connection_error" in capsys.readouterr().err
+
+
+def test_cli_reports_measured_failures_and_exits_unsuccessfully(monkeypatch, capsys):
+    result = HttpBenchmarkResult(
+        request_count=2,
+        success_count=1,
+        failure_count=1,
+        total_wall_seconds=0.2,
+        throughput_requests_per_second=10.0,
+        latency_ms_min=2.0,
+        latency_ms_median=3.0,
+        latency_ms_p95=4.0,
+        latency_ms_max=4.0,
+        status_counts={"200": 2},
+        failure_types={"invalid_response": 1},
+    )
+    monkeypatch.setattr(benchmark_http, "run_http_benchmark", lambda *_args, **_kwargs: result)
+
+    with pytest.raises(SystemExit) as exit_info:
+        benchmark_http.main([])
+
+    assert exit_info.value.code == 1
+    report = json.loads(capsys.readouterr().out)
+    assert report["request_count"] == 2
+    assert report["failure_count"] == 1
+    assert report["failure_types"] == {"invalid_response": 1}
