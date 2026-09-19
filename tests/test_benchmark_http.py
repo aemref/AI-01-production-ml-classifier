@@ -19,8 +19,13 @@ from src.benchmark_http import (
 
 
 class StubResponse:
-    def __init__(self, status=200):
+    def __init__(self, status=200, body=None):
         self.status = status
+        self.body = body or (
+            b'{"label":0,"label_name":"malignant","confidence":0.9,'
+            b'"malignant_probability":0.9,"benign_probability":0.1,'
+            b'"model_version":"test-model"}'
+        )
         self.was_read = False
 
     def __enter__(self):
@@ -31,7 +36,7 @@ class StubResponse:
 
     def read(self):
         self.was_read = True
-        return b"{}"
+        return self.body
 
 
 def test_external_summary_uses_wall_time_and_preserves_failures():
@@ -97,6 +102,51 @@ def test_prediction_request_sends_json_and_records_http_status():
     assert captured["timeout"] == 1.5
     assert response.was_read is True
     assert result == RequestObservation(0.02499999999999991, 200)
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"<html>not the classifier</html>",
+        b"{}",
+        b'{"label":0,"label_name":"malignant","confidence":0.9,'
+        b'"malignant_probability":0.9,"benign_probability":0.9,'
+        b'"model_version":"test-model"}',
+    ],
+)
+def test_prediction_request_rejects_invalid_success_body(body):
+    timestamps = iter([0.0, 0.1])
+    result = perform_prediction_request(
+        "http://localhost:8000",
+        timeout_seconds=2.0,
+        clock=lambda: next(timestamps),
+        opener=lambda *_args, **_kwargs: StubResponse(body=body),
+    )
+
+    assert result == RequestObservation(0.1, 200, "invalid_response")
+
+
+def test_summary_counts_invalid_success_body_as_failure():
+    result = summarize_observations(
+        [RequestObservation(0.01, 200, "invalid_response")],
+        wall_seconds=0.02,
+    )
+
+    assert result.success_count == 0
+    assert result.failure_count == 1
+    assert result.failure_types == {"invalid_response": 1}
+
+
+def test_warmup_rejects_invalid_success_body():
+    with pytest.raises(RuntimeError, match="Warmup request failed: invalid_response"):
+        run_http_benchmark(
+            "http://localhost:8000",
+            request_count=1,
+            warmup_count=1,
+            requester=lambda *_args, **_kwargs: RequestObservation(
+                0.01, 200, "invalid_response"
+            ),
+        )
 
 
 @pytest.mark.parametrize(
