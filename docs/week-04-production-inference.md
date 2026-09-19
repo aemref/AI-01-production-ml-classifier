@@ -111,6 +111,30 @@ the failure breakdown. Throughput uses wall time; latency includes each full
 HTTP request and response. This is a local-process TCP measurement, not a Docker
 or production measurement. No timing threshold is asserted across machines.
 
+## Container HTTP measurement
+
+On the same date, Docker Engine 29.5.2 built the image from the repository's
+Dockerfile for `linux/arm64` with Python 3.11.16 inside the container. The
+container reported `healthy`, served `/health` and `/predict` from the host,
+ran as `app`, and contained neither `pytest` nor `httpx`. The host benchmark
+process then used the same 200 requests, 20 warmups, four workers, and two-second
+timeout against the published loopback port:
+
+| Measure | Result |
+|---|---:|
+| Successful / failed requests | 200 / 0 |
+| Total measured wall time | 0.166 s |
+| Throughput | 1,203.8 requests/s |
+| Minimum latency | 1.314 ms |
+| Median latency | 3.117 ms |
+| p95 latency | 4.870 ms |
+| Maximum latency | 7.337 ms |
+
+This includes host-to-container HTTP and local container scheduling. The
+single-machine run is a reproducible baseline, not a production load test or
+capacity guarantee. CI repeats a shorter 50-request container benchmark and
+fails if any measured request fails; it does not gate on host-specific timing.
+
 ## Reproduction
 
 ```bash
