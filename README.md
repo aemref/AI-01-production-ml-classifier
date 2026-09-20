@@ -118,6 +118,19 @@ the [production inference report](docs/week-04-production-inference.md).
 The measured baseline, methodology, failure taxonomy, and limitations are in the
 [production inference report](docs/week-04-production-inference.md).
 
+## Reproduce a Controlled Drift Study
+
+```bash
+python -m src.drift --shift-sd 1
+python -m src.drift --shift-sd 0
+```
+
+The first command shifts the held-out rows' mean radius by one reference
+standard deviation and compares paired predictions from the published model
+artifact. The second is a zero-shift control. The measured result and important
+interpretation limits are in the [drift simulation report](docs/drift-simulation.md).
+This simulation is not evidence of real-world drift or clinical performance.
+
 ## Run
 
 Run the complete baseline with one command:
