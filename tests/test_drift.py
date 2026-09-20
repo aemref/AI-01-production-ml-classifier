@@ -1,5 +1,8 @@
+import json
 from math import isclose
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -60,3 +63,26 @@ def test_zero_shift_keeps_all_paired_predictions_unchanged():
 def test_simulation_rejects_invalid_shift(shift):
     with pytest.raises(ValueError, match="finite nonnegative"):
         simulate_drift(REAL_DATA_PATH, shift_sd=shift)
+
+
+def test_drift_cli_emits_strict_json():
+    result = subprocess.run(
+        [sys.executable, "-m", "src.drift", "--shift-sd", "0"],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+
+    report = json.loads(result.stdout, parse_constant=lambda value: pytest.fail(value))
+    assert report["predictions"]["changed_count"] == 0
+
+
+def test_drift_cli_rejects_invalid_configuration():
+    result = subprocess.run(
+        [sys.executable, "-m", "src.drift", "--shift-sd", "-1"],
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "finite nonnegative" in result.stderr

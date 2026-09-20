@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import argparse
+import json
 from math import isfinite
 from pathlib import Path
 from typing import Sequence
 
-from src.model_artifact import verify_artifact_dataset
+from src.model_artifact import ArtifactValidationError, verify_artifact_dataset
 from src.predictor import DEFAULT_ARTIFACT_PATH, Predictor
 from src.train import FEATURE_COLUMNS, load_and_validate_dataset, split_dataset
 
@@ -89,3 +91,24 @@ def simulate_drift(
             "changed_count": sum(old != new for old, new in zip(before, after)),
         },
     }
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Simulate a controlled feature shift")
+    parser.add_argument(
+        "--data", default="data/breast_cancer_wisconsin_diagnostic.csv"
+    )
+    parser.add_argument("--artifact", default=str(DEFAULT_ARTIFACT_PATH))
+    parser.add_argument("--shift-sd", type=float, default=1.0)
+    args = parser.parse_args()
+    try:
+        report = simulate_drift(
+            args.data, artifact_path=args.artifact, shift_sd=args.shift_sd
+        )
+    except (FileNotFoundError, ValueError, ArtifactValidationError) as error:
+        parser.error(str(error))
+    print(json.dumps(report, indent=2, sort_keys=True, allow_nan=False))
+
+
+if __name__ == "__main__":
+    main()
