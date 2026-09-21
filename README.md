@@ -59,6 +59,18 @@ precision floor are ranked on validation; only the selected model is then
 evaluated once on test. See the [comparison report](docs/week-03-model-comparison.md)
 and [model-card draft](docs/model-card.md).
 
+Record the same comparison in an opt-in local MLflow backend:
+
+```bash
+python -m pip install -r requirements-mlflow.txt
+python -m src.run_experiment --track-mlflow --run-name local-baseline
+```
+
+The command uses a local SQLite tracking database, logs the dataset digest,
+split sizes, selection policy, candidate metrics, selected-model test metrics,
+and a portable JSON report. MLflow is not installed by the normal runtime or
+development requirements. See the [tracking guide and verified run](docs/mlflow-experiment-tracking.md).
+
 ## Serve Predictions
 
 Start the API locally after installing the runtime dependencies:
@@ -267,6 +279,7 @@ one 70/15/15 split. They are not a production or clinical performance claim.
 
 ## Status
 
-Week 4 in progress: typed inference API, checksummed portable model artifact,
-fail-closed startup, structured failure telemetry, non-root Docker image, API
-and external HTTP benchmarks, and CI container smoke test.
+Month 1 release work in progress: typed inference API, checksummed portable
+model artifact, fail-closed startup, structured failure telemetry, non-root
+Docker image, measured API and external HTTP paths, deterministic drift
+simulation, and opt-in local MLflow experiment tracking.
