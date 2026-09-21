@@ -27,6 +27,11 @@ jobs:
         run: python src/train.py --data data/breast_cancer_wisconsin_diagnostic.csv
       - name: Compare baseline model candidates
         run: python -m src.compare_models --data data/breast_cancer_wisconsin_diagnostic.csv
+      - name: Record reproducible model comparison
+        run: >-
+          python -m src.run_experiment
+          --data data/breast_cancer_wisconsin_diagnostic.csv
+          --output /tmp/ai01-model-comparison.json
       - name: Run data quality risk analysis
         run: python src/data_quality.py --data data/breast_cancer_wisconsin_diagnostic.csv
       - name: Verify deterministic drift simulation
