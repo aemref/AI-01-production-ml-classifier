@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -34,3 +35,13 @@ def build_experiment_record(
         },
         "experiment": dict(comparison_report),
     }
+
+
+def write_experiment_record(
+    record: Mapping[str, Any], output_path: str | Path
+) -> Path:
+    """Write a stable JSON record and return its resolved output path."""
+    path = Path(output_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    return path.resolve()

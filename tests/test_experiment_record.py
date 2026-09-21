@@ -1,7 +1,13 @@
 import hashlib
 from pathlib import Path
 
-from src.experiment_record import build_experiment_record, sha256_file
+import json
+
+from src.experiment_record import (
+    build_experiment_record,
+    sha256_file,
+    write_experiment_record,
+)
 
 
 def _comparison_report():
@@ -37,3 +43,14 @@ def test_experiment_record_identifies_dataset_without_exposing_local_path(tmp_pa
     }
     assert str(dataset.parent) not in repr(record)
     assert record["experiment"]["selected_model"] == "example"
+
+
+def test_write_experiment_record_creates_stable_json(tmp_path):
+    output = tmp_path / "nested" / "record.json"
+    record = build_experiment_record(__file__, _comparison_report())
+
+    written_path = write_experiment_record(record, output)
+
+    assert written_path == output.resolve()
+    assert json.loads(output.read_text()) == record
+    assert output.read_text().endswith("\n")
