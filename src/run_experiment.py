@@ -40,7 +40,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--tracking-uri",
-        default="file:./mlruns",
+        default="sqlite:///mlruns.db",
         help="MLflow tracking URI used only with --track-mlflow",
     )
     parser.add_argument(

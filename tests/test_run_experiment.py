@@ -58,7 +58,7 @@ def test_cli_tracks_only_when_explicitly_requested(monkeypatch, tmp_path, capsys
     assert response["mlflow"]["run_id"] == "run-123"
     assert calls[0][1] == output.resolve()
     assert calls[0][2] == {
-        "tracking_uri": "file:./mlruns",
+        "tracking_uri": "sqlite:///mlruns.db",
         "experiment_name": "ai01-production-ml-classifier",
         "run_name": "test-run",
     }
