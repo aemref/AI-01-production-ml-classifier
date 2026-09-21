@@ -1,6 +1,8 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from src.mlflow_tracking import log_experiment_to_mlflow
 
 
@@ -110,3 +112,18 @@ def test_logs_parameters_metrics_tags_and_report_artifact(tmp_path):
         },
     ) in fake_mlflow.calls
     assert ("log_artifact", str(report.resolve()), "reports") in fake_mlflow.calls
+
+
+def test_missing_optional_dependency_has_an_install_hint(monkeypatch, tmp_path):
+    def missing_module(name):
+        raise ModuleNotFoundError(name)
+
+    monkeypatch.setattr("src.mlflow_tracking.importlib.import_module", missing_module)
+
+    with pytest.raises(RuntimeError, match="requirements-mlflow.txt"):
+        log_experiment_to_mlflow(
+            _record(),
+            tmp_path / "report.json",
+            tracking_uri="file:./mlruns",
+            experiment_name="ai01-local",
+        )

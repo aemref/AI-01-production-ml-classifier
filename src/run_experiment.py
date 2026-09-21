@@ -9,6 +9,7 @@ from typing import Any
 
 from src.compare_models import compare_models
 from src.experiment_record import build_experiment_record, write_experiment_record
+from src.mlflow_tracking import log_experiment_to_mlflow
 
 
 DEFAULT_DATA_PATH = Path("data/breast_cancer_wisconsin_diagnostic.csv")
@@ -32,22 +33,50 @@ def main() -> None:
     )
     parser.add_argument("--data", type=Path, default=DEFAULT_DATA_PATH)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH)
+    parser.add_argument(
+        "--track-mlflow",
+        action="store_true",
+        help="Log the completed record to the configured MLflow backend",
+    )
+    parser.add_argument(
+        "--tracking-uri",
+        default="file:./mlruns",
+        help="MLflow tracking URI used only with --track-mlflow",
+    )
+    parser.add_argument(
+        "--experiment-name",
+        default="ai01-production-ml-classifier",
+        help="MLflow experiment used only with --track-mlflow",
+    )
+    parser.add_argument(
+        "--run-name",
+        help="Optional MLflow run name used only with --track-mlflow",
+    )
     args = parser.parse_args()
 
     try:
         record, output_path = run_experiment(args.data, args.output)
-    except (FileNotFoundError, ValueError) as error:
+        mlflow_result = None
+        if args.track_mlflow:
+            mlflow_result = log_experiment_to_mlflow(
+                record,
+                output_path,
+                tracking_uri=args.tracking_uri,
+                experiment_name=args.experiment_name,
+                run_name=args.run_name,
+            )
+    except (FileNotFoundError, RuntimeError, ValueError) as error:
         parser.error(str(error))
 
+    result = {
+        "dataset_sha256": record["dataset"]["sha256"],
+        "output": str(output_path),
+        "selected_model": record["experiment"]["selected_model"],
+    }
+    if mlflow_result is not None:
+        result["mlflow"] = mlflow_result
     print(
-        json.dumps(
-            {
-                "dataset_sha256": record["dataset"]["sha256"],
-                "output": str(output_path),
-                "selected_model": record["experiment"]["selected_model"],
-            },
-            sort_keys=True,
-        )
+        json.dumps(result, sort_keys=True)
     )
 
 

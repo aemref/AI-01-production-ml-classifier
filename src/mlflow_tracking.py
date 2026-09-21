@@ -47,9 +47,16 @@ def log_experiment_to_mlflow(
     mlflow_module: Any | None = None,
 ) -> dict[str, str]:
     """Log one record to MLflow and return stable run identifiers."""
-    mlflow = (
-        importlib.import_module("mlflow") if mlflow_module is None else mlflow_module
-    )
+    if mlflow_module is None:
+        try:
+            mlflow = importlib.import_module("mlflow")
+        except ModuleNotFoundError as error:
+            raise RuntimeError(
+                "MLflow tracking was requested but MLflow is not installed; "
+                "install requirements-mlflow.txt"
+            ) from error
+    else:
+        mlflow = mlflow_module
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 
