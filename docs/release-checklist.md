@@ -52,3 +52,6 @@ Do not tag or push if any command fails, Git history has diverged, the working
 tree contains unexplained files, the container does not become healthy, or the
 remote main branch cannot be verified. Never rebase, force-push, rewrite the
 tag, or weaken a gate to make the release pass.
+
+The measured 2026-09-22 results are recorded in
+[`release-evidence-v1.0.0.md`](release-evidence-v1.0.0.md).

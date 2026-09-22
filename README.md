@@ -3,7 +3,8 @@
 [![CI](https://github.com/aemref/AI-01-production-ml-classifier/actions/workflows/ci.yml/badge.svg)](https://github.com/aemref/AI-01-production-ml-classifier/actions/workflows/ci.yml)
 
 Release documentation: [changelog](CHANGELOG.md) ·
-[v1.0.0 checklist](docs/release-checklist.md)
+[v1.0.0 checklist](docs/release-checklist.md) ·
+[measured release evidence](docs/release-evidence-v1.0.0.md)
 
 An **AI/ML + production engineering** learning project. It contains a small,
 testable classification pipeline and the repository practices needed to evolve
