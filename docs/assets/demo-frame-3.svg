@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#0b1220"/>
+  <rect x="42" y="42" width="876" height="456" rx="18" fill="#111c30" stroke="#334155" stroke-width="2"/>
+  <text x="74" y="120" fill="#38bdf8" font-family="SFMono-Regular, Menlo, monospace" font-size="22">Example 2 / low-radius dataset row</text>
+  <text x="74" y="190" fill="#cbd5e1" font-family="SFMono-Regular, Menlo, monospace" font-size="20">mean radius: 9.504    mean texture: 12.44</text>
+  <rect x="74" y="240" width="812" height="105" rx="12" fill="#052e2b"/>
+  <text x="100" y="286" fill="#f8fafc" font-family="SFMono-Regular, Menlo, monospace" font-size="24">prediction: benign</text>
+  <text x="100" y="324" fill="#6ee7b7" font-family="SFMono-Regular, Menlo, monospace" font-size="19">model confidence: 0.995449</text>
+  <text x="74" y="405" fill="#cbd5e1" font-family="SFMono-Regular, Menlo, monospace" font-size="17">application v1.0.0 · artifact 98b12889accb</text>
+  <text x="74" y="440" fill="#fbbf24" font-family="SFMono-Regular, Menlo, monospace" font-size="17">Inspect the JSON report with: python -m src.demo</text>
+</svg>

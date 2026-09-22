@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">
+  <rect width="960" height="540" fill="#0b1220"/>
+  <rect x="42" y="42" width="876" height="456" rx="18" fill="#111c30" stroke="#334155" stroke-width="2"/>
+  <circle cx="74" cy="73" r="7" fill="#fb7185"/>
+  <circle cx="98" cy="73" r="7" fill="#fbbf24"/>
+  <circle cx="122" cy="73" r="7" fill="#34d399"/>
+  <text x="74" y="145" fill="#38bdf8" font-family="SFMono-Regular, Menlo, monospace" font-size="25">AI-01 Production ML Classifier</text>
+  <text x="74" y="210" fill="#94a3b8" font-family="SFMono-Regular, Menlo, monospace" font-size="20">$ python -m src.demo</text>
+  <text x="74" y="276" fill="#e2e8f0" font-family="SFMono-Regular, Menlo, monospace" font-size="20">loading checksummed model artifact...</text>
+  <text x="74" y="320" fill="#34d399" font-family="SFMono-Regular, Menlo, monospace" font-size="20">verified logistic-regression-98b12889accb</text>
+  <text x="74" y="410" fill="#cbd5e1" font-family="SFMono-Regular, Menlo, monospace" font-size="17">Two fixed examples · local execution · no external service</text>
+</svg>
