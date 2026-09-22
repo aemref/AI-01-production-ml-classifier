@@ -14,6 +14,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from src import __version__
 from src.predictor import DEFAULT_ARTIFACT_PATH, Predictor
 
 
@@ -59,7 +60,7 @@ def create_app(
 
     application = FastAPI(
         title="AI-01 Production ML Classifier",
-        version="0.1.0",
+        version=__version__,
         lifespan=lifespan,
     )
 

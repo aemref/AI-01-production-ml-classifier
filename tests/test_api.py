@@ -4,6 +4,7 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from src import __version__
 from src.api import create_app
 from src.model_artifact import ArtifactValidationError
 from src.predictor import Predictor
@@ -27,6 +28,14 @@ def test_default_app_loads_the_persisted_artifact():
 
     assert health.status_code == 200
     assert health.json()["model_version"] == "logistic-regression-98b12889accb"
+
+
+def test_openapi_reports_the_package_release_version():
+    with TestClient(create_app()) as artifact_client:
+        schema = artifact_client.get("/openapi.json").json()
+
+    assert __version__ == "1.0.0"
+    assert schema["info"]["version"] == __version__
 
 
 def test_app_fails_closed_when_artifact_integrity_is_missing(tmp_path):
