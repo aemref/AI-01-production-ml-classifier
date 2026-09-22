@@ -71,6 +71,22 @@ split sizes, selection policy, candidate metrics, selected-model test metrics,
 and a portable JSON report. MLflow is not installed by the normal runtime or
 development requirements. See the [tracking guide and verified run](docs/mlflow-experiment-tracking.md).
 
+## Reproducible Demo
+
+Run two fixed examples through the checksummed artifact without starting a
+server or calling an external service:
+
+```bash
+python -m src.demo
+```
+
+The JSON output includes the application version, model version, inputs,
+probabilities, predictions, and safety disclaimer. The animation below was
+rendered from that verified command; its SVG source frames and renderer are
+checked in so the visual can be audited and regenerated.
+
+![Local classifier demo](docs/assets/demo.gif)
+
 ## Serve Predictions
 
 Start the API locally after installing the runtime dependencies:
@@ -210,6 +226,9 @@ signals, and model comparison can be inspected without rerunning it.
 
 ## Architecture
 
+The full [architecture document](docs/architecture.md) describes the training,
+artifact, runtime, trust-boundary, deployment, and rollback decisions.
+
 ```mermaid
 flowchart LR
     A[CSV input] --> B[Schema and value validation]
@@ -279,7 +298,8 @@ one 70/15/15 split. They are not a production or clinical performance claim.
 
 ## Status
 
-Month 1 release work in progress: typed inference API, checksummed portable
+Month 1 release candidate: typed inference API, checksummed portable
 model artifact, fail-closed startup, structured failure telemetry, non-root
 Docker image, measured API and external HTTP paths, deterministic drift
-simulation, and opt-in local MLflow experiment tracking.
+simulation, opt-in local MLflow experiment tracking, auditable architecture,
+and a reproducible local demo. Final release gates remain before tagging.
