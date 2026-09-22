@@ -32,3 +32,14 @@ def test_ci_benchmarks_the_running_container_over_external_http():
     assert "--base-url http://127.0.0.1:8000" in workflow
     assert "--concurrency 4" in workflow
     assert "--timeout 2" in workflow
+
+
+def test_ci_verifies_artifact_demo_and_release_evidence_before_packaging():
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+
+    artifact = workflow.index("python -m src.verify_artifact")
+    demo = workflow.index("python -m src.demo --compact")
+    release = workflow.index("python -m src.release_readiness")
+    container = workflow.index("docker build --tag ai01-classifier:ci")
+
+    assert artifact < demo < release < container

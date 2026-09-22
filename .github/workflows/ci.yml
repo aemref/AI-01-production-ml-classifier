@@ -38,6 +38,10 @@ jobs:
         run: python -m src.drift --shift-sd 1
       - name: Verify published model artifact
         run: python -m src.verify_artifact
+      - name: Run reproducible artifact demo
+        run: python -m src.demo --compact
+      - name: Verify deterministic release evidence
+        run: python -m src.release_readiness
       - name: Compile source and tests
         run: python -m compileall -q src tests
       - name: Run bounded API benchmark

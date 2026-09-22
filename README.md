@@ -203,8 +203,9 @@ python -m pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-CI runs the same tests, baseline command, and data-quality audit on every push
-and pull request.
+CI runs the same tests, baseline command, data-quality audit, artifact demo,
+release-evidence gate, container smoke flow, and bounded HTTP benchmark on every
+push and pull request.
 
 ## Data Quality Audit
 
